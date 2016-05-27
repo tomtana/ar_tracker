@@ -20,6 +20,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
 #include <string.h>
+#include <tf/transform_broadcaster.h>
 
 extern "C" 
 {
@@ -44,6 +45,7 @@ private:
     const std::string _cameraInfoLeftTopic  = "/camera/camera_info";
     const std::string _cameraImageRightTopic = "/camera/right/image_raw";
     const std::string _cameraInfoRightTopic  = "/camera/right/camera_info";
+    static const float UnitAR2ROS= 0.001;
     image_transport::ImageTransport _it;
     image_transport::Publisher _pub;
     image_transport::Subscriber _sub_il;
@@ -59,6 +61,7 @@ private:
     cv_bridge::CvImagePtr _capture_left;
     cv_bridge::CvImagePtr _capture_right;
     bool _init=false;
+    tf::TransformBroadcaster _tf_br;
     
     //ARToolkit parameter
     ARParam _cam_param_left_art;

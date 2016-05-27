@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   roscpp
   sensor_msgs
+  tf
 )
 
 find_package(OpenCV)

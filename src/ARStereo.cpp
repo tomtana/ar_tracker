@@ -370,23 +370,23 @@ void ARStereo::mainLoop(void)
 
                             if (kL != -1 || kR != -1) {
 
-                    if (kL != -1 && kR != -1) {
-                        err = arGetStereoMatchingErrorSquare(gAR3DStereoHandle, &markerInfoL[kL], &markerInfoR[kR]);
-                        //ARLOG("stereo err = %f\n", err);
-                        if (err > 16.0) {
-                            //ARLOG("Stereo matching error: %d %d.\n", markerInfoL[kL].area, markerInfoR[kR].area);
-                            if (markerInfoL[kL].area > markerInfoR[kR].area ) kR = -1;
-                            else                                              kL = -1;
-                        }
-                    }
+                                if (kL != -1 && kR != -1) {
+                                    err = arGetStereoMatchingErrorSquare(gAR3DStereoHandle, &markerInfoL[kL], &markerInfoR[kR]);
+                                    //ARLOG("stereo err = %f\n", err);
+                                    if (err > 16.0) {
+                                        //ARLOG("Stereo matching error: %d %d.\n", markerInfoL[kL].area, markerInfoR[kR].area);
+                                        if (markerInfoL[kL].area > markerInfoR[kR].area ) kR = -1;
+                                        else                                              kL = -1;
+                                    }
+                                }
 
-                    err = arGetTransMatSquareStereo(gAR3DStereoHandle, (kL == -1 ? NULL : &markerInfoL[kL]), (kR == -1 ?  NULL : &markerInfoR[kR]), markersSquare[i].marker_width, markersSquare[i].trans);
+                                err = arGetTransMatSquareStereo(gAR3DStereoHandle, (kL == -1 ? NULL : &markerInfoL[kL]), (kR == -1 ?  NULL : &markerInfoR[kR]), markersSquare[i].marker_width, markersSquare[i].trans);
 
-                    if (err < 10.0) markersSquare[i].valid = TRUE;
+                                if (err < 10.0) markersSquare[i].valid = TRUE;
 
-                    if (kL == -1)      ROS_INFO("[%2d] right:      err = %f\n", i, err);
-                    else if (kR == -1) ROS_INFO("[%2d] left:       err = %f\n", i, err);
-                    else               ROS_INFO("[%2d] left+right: err = %f\n", i, err);
+                                if (kL == -1)      ROS_INFO("[%2d] right:      err = %f\n", i, err);
+                                else if (kR == -1) ROS_INFO("[%2d] left:       err = %f\n", i, err);
+                                else               ROS_INFO("[%2d] left+right: err = %f\n", i, err);
 
                             }
 
@@ -402,22 +402,35 @@ void ARStereo::mainLoop(void)
                                     if (!markersSquare[i].validPrev) {
                                             // Marker has become visible, tell any dependent objects.
                                     }
-
                                     // We have a new pose, so set that.
+                                    tf::Transform tf;
+                                    ARdouble ARquat[4];
+                                    ARdouble ARpos[3];
+                                    tf::Quaternion ROSquat;
+                                    std::string frame_id="Patt.ID=";
+                                    frame_id.append(boost::lexical_cast<std::string>(markersSquare[i].patt_id));
+                                    
+                                    arUtilMat2QuatPos(markersSquare[i].trans,ARquat,ARpos);
+                                    ROSquat.setValue(-ARquat[0],-ARquat[1],-ARquat[2],ARquat[3]);
+                                    tf.setOrigin(tf::Vector3(ARpos[0]*UnitAR2ROS,ARpos[1]*UnitAR2ROS,ARpos[2]*UnitAR2ROS));
+                                    tf.setRotation(ROSquat);
+                                    _tf_br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), "camera" ,frame_id));
+                                    
+                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[0][0],markersSquare[i].trans[0][1], markersSquare[i].trans[0][2],markersSquare[i].trans[0][3] );
+                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[1][0],markersSquare[i].trans[1][1], markersSquare[i].trans[1][2],markersSquare[i].trans[1][3] );
+                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[2][0],markersSquare[i].trans[2][1], markersSquare[i].trans[2][2],markersSquare[i].trans[2][3] );
                                     arglCameraViewRH((const ARdouble (*)[4])markersSquare[i].trans, markersSquare[i].pose.T, 1.0f /*VIEW_SCALEFACTOR*/);
                                     arUtilMatMul((const ARdouble (*)[4])transL2R, (const ARdouble (*)[4])markersSquare[i].trans, transR);
                                     arglCameraViewRH((const ARdouble (*)[4])transR, poseR.T, 1.0f /*VIEW_SCALEFACTOR*/);
                                     // Tell any dependent objects about the update.
 
                             } else {
-
                                     if (markersSquare[i].validPrev) {
                                             // Marker has ceased to be visible, tell any dependent objects.
                                     }
-                            }                    
+                            }
             }
                     // Tell GLUT the display has changed.
-
             } else {
 
             }
