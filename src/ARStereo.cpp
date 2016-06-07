@@ -12,26 +12,23 @@ ARStereo::ARStereo(ros::NodeHandle & nh):
     //_pub = _it.advertise("test", 1);
     _sub_il = _it.subscribe(_cameraImageLeftTopic, 1, &ARStereo::imageLeftCallback, this);
     _sub_cil = _nh.subscribe(_cameraInfoLeftTopic,1,&ARStereo::cameraInfoLeftCallback ,this);
+    _sub_ir = _it.subscribe(_cameraImageRightTopic, 1, &ARStereo::imageRightCallback, this);
+    _sub_cir = _nh.subscribe(_cameraInfoRightTopic,1,&ARStereo::cameraInfoRightCallback ,this);
     
 }
     
 void ARStereo::ARInit(){
     
     ROS_INFO("Initializing ARToolkit..");
-    
-    char    transL2RDefault[] = "Data/transL2R.dat";
-    transL2R[0][0]=1;
-    transL2R[0][1]=0;
-    transL2R[0][2]=0;
-    transL2R[0][3]=-0.001;
-    transL2R[1][0]=0;
-    transL2R[1][1]=1;
-    transL2R[1][2]=0;
-    transL2R[1][3]=0;
-    transL2R[2][0]=0;
-    transL2R[2][1]=0;
-    transL2R[2][2]=1;
-    transL2R[2][3]=0;
+   /*
+    ARParam cparam1;
+    char    cparaLDefault[] = "/home/tman/Downloads/ARToolKit5/bin/webcam_para.dat";
+    if (arParamLoad(cparaLDefault, 1, &cparam1) < 0) {
+		ARLOGe("setupCamera(): Error loading parameter file %s for camera.\n", cparaLDefault);
+    }
+    arParamDisp((const ARParam*) &cparam1);
+    */
+    //char    transL2RDefault[] = "Data/transL2R.dat";
      //
     // AR init.
     //
@@ -81,8 +78,15 @@ void ARStereo::ARInit(){
     
      
     arUtilMatInv((const ARdouble (*)[4])transL2R, transR2L);
+    ROS_INFO("transL2R:");
     arParamDispExt(transL2R);
+    ROS_INFO("transR2L:");
+    arParamDispExt(transR2L);
+    ROS_INFO("Left Camera Calibration:");
     arParamDisp((const ARParam*) &_cam_param_left_art);
+    ROS_INFO("Right Camera Calibration:");
+    arParamDisp((const ARParam*) &_cam_param_right_art);
+    
     gAR3DStereoHandle = ar3DStereoCreateHandle(&(gCparamLTL->param), &(gCparamLTR->param), AR_TRANS_MAT_IDENTITY, transL2R);
     if (!gAR3DStereoHandle) {
         ROS_ERROR("Error: ar3DCreateHandle.\n");
@@ -110,8 +114,8 @@ void ARStereo::ARInit(){
     
     // Set the pattern detection mode (template (pictorial) vs. matrix (barcode) based on
     // the marker types as defined in the marker config. file.
-    arSetPatternDetectionMode(gARHandleL, gARPattDetectionMode); // Default = AR_TEMPLATE_MATCHING_COLOR
-    arSetPatternDetectionMode(gARHandleR, gARPattDetectionMode); // Default = AR_TEMPLATE_MATCHING_COLOR
+    arSetPatternDetectionMode(gARHandleL, AR_TEMPLATE_MATCHING_MONO); // Default = AR_TEMPLATE_MATCHING_COLOR
+    arSetPatternDetectionMode(gARHandleR, AR_TEMPLATE_MATCHING_MONO); // Default = AR_TEMPLATE_MATCHING_COLOR
     
     // Other application-wide marker options. Once set, these apply to all markers in use in the application.
     // If you are using standard ARToolKit picture (template) markers, leave commented to use the defaults.
@@ -143,14 +147,15 @@ void ARStereo::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img)
     #else
     ROS_ERROR("Your ROS Version is not supported.");
     #endif
-    if(_il_received&&(_init==false)){
+    if(_il_received&&(_init==false)&&(_ir_received)&&(_cil_received)&&(_cir_received)){
+        ROS_INFO("All topics successfully received messages. Continue with AR initialization..");
         ARInit();
         ROS_INFO("ARToolkit initialized");
         _init=true;
     }
     _il_received=true;
     //_pub.publish(incoming_img);
-    imageRightCallback(incoming_img);
+    //imageRightCallback(incoming_img);
     
 }
 
@@ -195,7 +200,6 @@ void ARStereo::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & ca
     _cam_param_left_art.mat[0][3] = 0;
     _cam_param_left_art.mat[1][3] = 0;
     _cam_param_left_art.mat[2][3] = 0;
-
         _cam_param_left_art.dist_factor[6] = _cam_info_left_ros.K[2];       // x0 = cX from openCV calibration
     _cam_param_left_art.dist_factor[7] = _cam_info_left_ros.K[5];       // y0 = cY from openCV calibration
     if ( _cam_info_left_ros.distortion_model == "plumb_bob" && _cam_info_left_ros.D.size() == 5){
@@ -215,8 +219,10 @@ void ARStereo::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & ca
     
     _cam_param_left_art.dist_function_version=4;
     
-    ROS_INFO("Fake camera_info msg for left camera");
-    cameraInfoRightCallback(cam_info);
+    
+    
+    //ROS_INFO("Fake camera_info msg for left camera");
+    //cameraInfoRightCallback(cam_info);
     _cil_received=true;
     //unsibscribe from topic
     _sub_cil.shutdown();  
@@ -242,7 +248,19 @@ void ARStereo::cameraInfoRightCallback(const sensor_msgs::CameraInfoConstPtr & c
     _cam_param_right_art.mat[0][3] = 0;
     _cam_param_right_art.mat[1][3] = 0;
     _cam_param_right_art.mat[2][3] = 0;
-
+    transL2R[0][3]=_cam_info_right_ros.P[3];
+    //transL2R[0][3]=104.07852;
+    transL2R[1][3]=_cam_info_right_ros.P[7];
+    transL2R[2][3]=_cam_info_right_ros.P[11];
+    transL2R[0][0]=1;
+    transL2R[0][1]=0;
+    transL2R[0][2]=0;
+    transL2R[1][0]=0;
+    transL2R[1][1]=1;
+    transL2R[1][2]=0;
+    transL2R[2][0]=0;
+    transL2R[2][1]=0;
+    transL2R[2][2]=1;
         _cam_param_right_art.dist_factor[6] = _cam_info_right_ros.K[2];       // x0 = cX from openCV calibration
     _cam_param_right_art.dist_factor[7] = _cam_info_right_ros.K[5];       // y0 = cY from openCV calibration
     if ( _cam_info_right_ros.distortion_model == "plumb_bob" && _cam_info_right_ros.D.size() == 5){
@@ -262,7 +280,7 @@ void ARStereo::cameraInfoRightCallback(const sensor_msgs::CameraInfoConstPtr & c
     
     _cam_param_right_art.dist_function_version=4;
     
-    _cil_received=true;
+    _cir_received=true;
     //unsibscribe from topic
     _sub_cir.shutdown();  
 }
@@ -289,7 +307,7 @@ void ARStereo::mainLoop(void)
             gARTImageL = (ARUint8 *) ((IplImage) _capture_left->image).imageData;
 
 
-            gARTImageR = (ARUint8 *) ((IplImage) _capture_left->image).imageData;
+            gARTImageR = (ARUint8 *) ((IplImage) _capture_right->image).imageData;
 
         if (gARTImageL && gARTImageR) {
                     gCallCountMarkerDetect++; // Increment ARToolKit FPS counter.
@@ -323,7 +341,7 @@ void ARStereo::mainLoop(void)
                                             }
                                     }
                                     if (kL != -1) {
-                                            ROS_INFO("Marker Detected");
+                                           // ROS_INFO("Marker Left Cam Detected");
                                             markerInfoL[kL].id = markerInfoL[kL].idPatt;
                                             markerInfoL[kL].cf = markerInfoL[kL].cfPatt;
                                             markerInfoL[kL].dir = markerInfoL[kL].dirPatt;
@@ -336,7 +354,7 @@ void ARStereo::mainLoop(void)
                                             }
                                     }
                                     if (kR != -1) {
-                                        ROS_INFO("Marker Detected");
+                                        //ROS_INFO("Marker Right Cam Detected");
                                             markerInfoR[kR].id = markerInfoR[kR].idPatt;
                                             markerInfoR[kR].cf = markerInfoR[kR].cfPatt;
                                             markerInfoR[kR].dir = markerInfoR[kR].dirPatt;
@@ -372,9 +390,9 @@ void ARStereo::mainLoop(void)
 
                                 if (kL != -1 && kR != -1) {
                                     err = arGetStereoMatchingErrorSquare(gAR3DStereoHandle, &markerInfoL[kL], &markerInfoR[kR]);
-                                    //ARLOG("stereo err = %f\n", err);
+                                    ARLOG("stereo err = %f\n", err);
                                     if (err > 16.0) {
-                                        //ARLOG("Stereo matching error: %d %d.\n", markerInfoL[kL].area, markerInfoR[kR].area);
+                                        ARLOG("Stereo matching error: %d %d.\n", markerInfoL[kL].area, markerInfoR[kR].area);
                                         if (markerInfoL[kL].area > markerInfoR[kR].area ) kR = -1;
                                         else                                              kL = -1;
                                     }
@@ -414,11 +432,11 @@ void ARStereo::mainLoop(void)
                                     ROSquat.setValue(-ARquat[0],-ARquat[1],-ARquat[2],ARquat[3]);
                                     tf.setOrigin(tf::Vector3(ARpos[0]*UnitAR2ROS,ARpos[1]*UnitAR2ROS,ARpos[2]*UnitAR2ROS));
                                     tf.setRotation(ROSquat);
-                                    _tf_br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), "camera" ,frame_id));
+                                    _tf_br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), "left" ,frame_id));
                                     
-                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[0][0],markersSquare[i].trans[0][1], markersSquare[i].trans[0][2],markersSquare[i].trans[0][3] );
-                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[1][0],markersSquare[i].trans[1][1], markersSquare[i].trans[1][2],markersSquare[i].trans[1][3] );
-                                    ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[2][0],markersSquare[i].trans[2][1], markersSquare[i].trans[2][2],markersSquare[i].trans[2][3] );
+                                    //ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[0][0],markersSquare[i].trans[0][1], markersSquare[i].trans[0][2],markersSquare[i].trans[0][3] );
+                                    //ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[1][0],markersSquare[i].trans[1][1], markersSquare[i].trans[1][2],markersSquare[i].trans[1][3] );
+                                    //ROS_INFO("%f  %f  %f  %f", markersSquare[i].trans[2][0],markersSquare[i].trans[2][1], markersSquare[i].trans[2][2],markersSquare[i].trans[2][3] );
                                     arglCameraViewRH((const ARdouble (*)[4])markersSquare[i].trans, markersSquare[i].pose.T, 1.0f /*VIEW_SCALEFACTOR*/);
                                     arUtilMatMul((const ARdouble (*)[4])transL2R, (const ARdouble (*)[4])markersSquare[i].trans, transR);
                                     arglCameraViewRH((const ARdouble (*)[4])transR, poseR.T, 1.0f /*VIEW_SCALEFACTOR*/);

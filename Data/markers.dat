@@ -12,10 +12,12 @@
 #                  value is AR_FILTER_TRANS_MAT_CUTOFF_FREQ_DEFAULT, which
 #                  at time of writing, equals 5.0.
 # A blank line
+#181.0
 
 hiro.patt
 SINGLE
-80.0
+181.0
+FILTER 5.0
 
 kanji.patt
 SINGLE

@@ -41,10 +41,10 @@ private:
     
     // ROS Parameter
     ros::NodeHandle _nh;
-    const std::string _cameraImageLeftTopic = "/camera/image_raw";
-    const std::string _cameraInfoLeftTopic  = "/camera/camera_info";
-    const std::string _cameraImageRightTopic = "/camera/right/image_raw";
-    const std::string _cameraInfoRightTopic  = "/camera/right/camera_info";
+    const std::string _cameraImageLeftTopic = "/left/image_raw";
+    const std::string _cameraInfoLeftTopic  = "/left/camera_info";
+    const std::string _cameraImageRightTopic = "/right/image_raw";
+    const std::string _cameraInfoRightTopic  = "/right/camera_info";
     static const float UnitAR2ROS= 0.001;
     image_transport::ImageTransport _it;
     image_transport::Publisher _pub;

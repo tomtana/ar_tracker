@@ -1,0 +1,9 @@
+
+<launch>
+  
+  <node pkg="tf" type="static_transform_publisher" name="world_to_cam_left" 
+    args="0 0 0.5 -1.57 0 -1.57 world left 10" />
+  
+  <node pkg="tf" type="static_transform_publisher" name="left_to_right" 
+    args="0.0 0 0 0 0 0 left right 10" />
+</launch>
