@@ -63,7 +63,7 @@
 #define  AR_MATRIX_CODE_DETECTION                 2
 #define  AR_TEMPLATE_MATCHING_COLOR_AND_MATRIX    3
 #define  AR_TEMPLATE_MATCHING_MONO_AND_MATRIX     4
-#define  AR_DEFAULT_PATTERN_DETECTION_MODE    AR_TEMPLATE_MATCHING_COLOR
+#define  AR_DEFAULT_PATTERN_DETECTION_MODE    AR_TEMPLATE_MATCHING_MONO
 
 /* for arMarkerExtractionMode */
 #define  AR_USE_TRACKING_HISTORY              0
@@ -92,7 +92,7 @@
 
 
 
-#define   AR_AREA_MAX                   1000000		// Maximum area (in pixels) of connected regions considered valid candidate for marker detection.
+#define   AR_AREA_MAX                   1500000		// Maximum area (in pixels) of connected regions considered valid candidate for marker detection.
 #define   AR_AREA_MIN                        70		// Minimum area (in pixels) of connected regions considered valid candidate for marker detection.
 #define   AR_SQUARE_FIT_THRESH                1.0
 
@@ -101,7 +101,7 @@
 #  define AR_LABELING_WORK_SIZE      1024*32*16
 #  define AR_LABELING_LABEL_TYPE        ARInt32
 #else
-#  define AR_LABELING_WORK_SIZE         1024*32     // This number may not exceed 65535 when using 16-bits labels.
+#  define AR_LABELING_WORK_SIZE         2048*32     // This number may not exceed 65535 when using 16-bits labels.
 #  define AR_LABELING_LABEL_TYPE        ARInt16
 #endif
 

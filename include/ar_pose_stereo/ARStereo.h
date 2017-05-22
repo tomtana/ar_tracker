@@ -21,6 +21,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <string.h>
 #include <tf/transform_broadcaster.h>
+#include <image_geometry/pinhole_camera_model.h>
 
 extern "C" 
 {
@@ -36,67 +37,69 @@ extern "C"
 #include <ARMarkerSquare.h>
 }
 
+#define SCALE_DEFAULT 1
+#define SCALE_WAIT_RESET 5
+#define ROI_WAIT_RESET 1
+
 class ARStereo{
 private:
     
     // ROS Parameter
     ros::NodeHandle _nh;
-    const std::string _cameraImageLeftTopic = "/left/image_raw";
-    const std::string _cameraInfoLeftTopic  = "/left/camera_info";
-    const std::string _cameraImageRightTopic = "/right/image_raw";
-    const std::string _cameraInfoRightTopic  = "/right/camera_info";
+    std::string _cameraImageLeftTopic = "/left/image_raw";
+    std::string _cameraInfoLeftNewTopic  = "/left/camera_info_new";
     static const float UnitAR2ROS= 0.001;
     image_transport::ImageTransport _it;
     image_transport::Publisher _pub;
     image_transport::Subscriber _sub_il;
-    image_transport::Subscriber _sub_ir;
     ros::Subscriber _sub_cil;
-    ros::Subscriber _sub_cir;
+    ros::Subscriber _sub_ciln;
+    ros::Publisher _pub_ciln;
     bool _il_received;
-    bool _ir_received;
     bool _cil_received;
-    bool _cir_received;
+    bool _ciln_received;
     sensor_msgs::CameraInfo _cam_info_left_ros;
-    sensor_msgs::CameraInfo _cam_info_right_ros;
+    image_geometry::PinholeCameraModel _cam_model_left;
     cv_bridge::CvImagePtr _capture_left;
-    cv_bridge::CvImagePtr _capture_right;
+    ros::Time _capture_time_left;
     bool _init=false;
     tf::TransformBroadcaster _tf_br;
+
     
     //ARToolkit parameter
     ARParam _cam_param_left_art;
-    ARParam _cam_param_right_art;
-    
+
     // Markers.
     ARMarkerSquare *markersSquare = NULL;
     int markersSquareCount = 0;
 
 // Marker detection.
     ARHandle		*gARHandleL = NULL;
-    ARHandle		*gARHandleR = NULL;
     long			 gCallCountMarkerDetect = 0;
     ARPattHandle	*gARPattHandle = NULL;
     int           gARPattDetectionMode;
-    
+    int selected_marker=0; //holds the status of the marker which was selected to track. right now it is hardcoded for the first element.
+    float image_scale=SCALE_DEFAULT; //parameter stores the current scaling of the image
+    int marker_size_max = 20; //maximum pixel size of marker
+    int marker_roi_x = 80;
+    int marker_roi_y = 80;
+
+
     //file path to marker -> maybe replace through ros parameter
-    const std::string markerConfigDataFilename = "/home/tman/catkin_ws/src/ar_pose_stereo/Data/markers.dat";
-    const std::string objectDataFilename = "/home/tman/catkin_ws/src/ar_pose_stereo/Data/objects.dat";
+    const std::string markerConfigDataFilename = "/home/tman/ros_ws/src/ar_pose_stereo/Data/markers.dat";
+    const std::string objectDataFilename = "/home/tman/ros_ws/src/ar_pose_stereo/Data/objects.dat";
     
     // Transformation matrix retrieval.
     AR3DHandle	*gAR3DHandleL = NULL;
-    AR3DHandle	*gAR3DHandleR = NULL;
-    AR3DStereoHandle	*gAR3DStereoHandle = NULL;
     ARdouble      transL2R[3][4];
     ARdouble      transR2L[3][4];
     
     //image
     ARUint8		*gARTImageL = NULL;
-    ARUint8		*gARTImageR = NULL;
-    
+
     //Camera Parameter
     ARParamLT *gCparamLTL = NULL;
-    ARParamLT *gCparamLTR = NULL;
-    
+
 public:
     
     
@@ -104,13 +107,13 @@ public:
     ARStereo(ros::NodeHandle & nh);
     
     ~ARStereo();
-  
+    void updateCameraInfo(const sensor_msgs::CameraInfo &);
     void imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img);
     void cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr &);
-    void imageRightCallback(const sensor_msgs::ImageConstPtr& incoming_img);
-    void cameraInfoRightCallback(const sensor_msgs::CameraInfoConstPtr &);
+    void arParamUpdate(ARHandle* handle, ARParam *param);
     void ARInit();
     void mainLoop();
+
 };
     
 #endif /* ARSTEREO_H */

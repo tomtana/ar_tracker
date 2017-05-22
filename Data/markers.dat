@@ -1,5 +1,5 @@
 #Marker Count
-2
+1
 
 # Entries for each marker. Format is:
 #
@@ -16,10 +16,10 @@
 
 hiro.patt
 SINGLE
-181.0
+191.0
 FILTER 5.0
 
-kanji.patt
-SINGLE
-80.0
-FILTER 15.0
+#kanji.patt
+#SINGLE
+#80.0
+#FILTER 15.0
