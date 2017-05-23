@@ -23,6 +23,8 @@
 #include <tf/transform_broadcaster.h>
 #include <image_geometry/pinhole_camera_model.h>
 
+#include <RoiTracker.h>
+
 extern "C" 
 {
 //ARToolkit includes
@@ -69,7 +71,7 @@ private:
     tf::Transform tf_prev;
     bool _init=false;
     tf::TransformBroadcaster _tf_br;
-
+    RoiTracker roi_tracker;
     
     //ARToolkit parameter
     ARParam _cam_param_left_art;

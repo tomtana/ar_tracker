@@ -214,6 +214,7 @@ void ARStereo::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & ca
     ROS_DEBUG("CameraInfo Left received.");
     image_geometry::PinholeCameraModel cam_model_tmp;
     cam_model_tmp.fromCameraInfo(cam_info);
+    roi_tracker.fromCameraInfo(*(cam_info));
 
     if(_cam_model_left.rawRoi()==cam_model_tmp.rawRoi() && _cam_model_left.initialized() && _cam_model_left.intrinsicMatrix()==cam_model_tmp.intrinsicMatrix() && _cil_received==true){
         ROS_DEBUG("cameraInfoLeftCallback: camera_info received but not updated since it has not changed");
@@ -503,6 +504,7 @@ void ARStereo::mainLoop(void)
                         double z=tf.getOrigin().length();
                         cv::Point3d p3d(x,0,z);
                         cv::Point2d p2d= _cam_model_left.project3dToPixel(p3d);
+                        //todo check in detail here, somehow is the y component not 0 as expected but slightly around 0
                         //ROS_INFO("P2D roi [%.1f,%.1f]",p2d.x,p2d.y);
                         //p2d = _cam_model_left.unrectifyPoint(p2d);
                         //ROS_INFO("P2D roi unrectified [%.1f,%.1f]",p2d.x,p2d.y);
@@ -520,35 +522,12 @@ void ARStereo::mainLoop(void)
                         }else{
                             image_scale=SCALE_DEFAULT;
                         }
-                        //set roi around marker
-                        p3d=cv::Point3d(tf.getOrigin().x(),
-                                        tf.getOrigin().y(),
-                                        tf.getOrigin().z());
-                        //predict new position
-                        ros::Duration dt=_capture_time_left-_capture_time_prev;
-                        tf_prev.setOrigin(tf.getOrigin()-tf_prev.getOrigin());
-                        //tf_prev.getOrigin().normalize();
-                        tf::Vector3 grad=tf_prev.getOrigin();
-                        ROS_INFO("POS 3d=  [%.2f, %.2f, %.2f]",p3d.x,p3d.y,p3d.z);
-                        if(dt.toSec()<0.3){
-                            p3d=p3d+cv::Point3d(grad.x(),
-                                                grad.y(),
-                                                grad.z());
-                            ROS_INFO("POS pre= [%.2f, %.2f, %.2f]",p3d.x,p3d.y,p3d.z);
-                        }
-                        tf_prev=tf;
-                        _capture_time_prev=_capture_time_left;
-                        p2d=_cam_model_left.project3dToPixel(p3d);
-                        p2d=_cam_model_left.toFullResolution(p2d);
-                        p2d=_cam_model_left.unrectifyPoint(p2d);
-                        ROS_DEBUG("Setting new ROI");
-                        //std::cout<<"p2d: "<<p2d<<"\np3d: "<<p3d<<std::endl;
-                        _cam_info_left_ros.roi.x_offset=(uint)cv::max(0,(int)p2d.x-marker_roi_x-l);
-                        _cam_info_left_ros.roi.y_offset=(uint)cv::max(0,(int)p2d.y-marker_roi_y-l);
-                        _cam_info_left_ros.roi.height=cv::min((int)(_cam_model_left.fullResolution().height-_cam_info_left_ros.roi.y_offset),2*(marker_roi_x+l));
-                        _cam_info_left_ros.roi.width=cv::min((int)(_cam_model_left.fullResolution().width-_cam_info_left_ros.roi.x_offset),2*(marker_roi_x+l));
-                        _pub_ciln.publish(_cam_info_left_ros);
-                        updateCameraInfo(_cam_info_left_ros);
+
+                        //update roi
+                        roi_tracker.updateRoi(tf.getOrigin(),marker_roi_x,marker_roi_y,markersSquare[i].marker_height/1000.0,_capture_time_left,0.3);
+                        //publish and update
+                        _pub_ciln.publish(roi_tracker.getCameraInfo());
+                        updateCameraInfo(roi_tracker.getCameraInfo());
                         return;
 
                     }
@@ -567,59 +546,11 @@ void ARStereo::mainLoop(void)
                              cnt_scale++;
                          }
 
-                         //reset roi
-                         static int cnt_roi=0;
-                         if(cnt_roi>=ROI_WAIT_RESET){
-
-                             //check if roi is set
-                            if(_cam_info_left_ros.roi.width>0 && _cam_info_left_ros.roi.height>0) {
-
-                                //compute new size of roi
-                                ROS_INFO("Reset ROI");
-                                int height, width, x, y, x_size, y_size;
-                                height = (int)((_cam_info_left_ros.roi.height +  (2 * ROI_REGION_GROW_Y)) );
-                                width = (int)((_cam_info_left_ros.roi.width +  (2 * ROI_REGION_GROW_X )) );
-                                x = (int)((_cam_info_left_ros.roi.x_offset -  (ROI_REGION_GROW_X)) );
-                                y = (int)((_cam_info_left_ros.roi.y_offset - (ROI_REGION_GROW_Y)) );
-                                x_size =  _cam_model_left.fullResolution().width ;
-                                y_size =  _cam_model_left.fullResolution().height ;
-
-                                //check if new region is within the width of the image and adapt the size
-                                _cam_info_left_ros.roi.x_offset=x =     cv::max(0,x);
-                                _cam_info_left_ros.roi.y_offset=y =     cv::max(0,y);
-                                _cam_info_left_ros.roi.width =width=    cv::min(x_size - x, width);
-                                _cam_info_left_ros.roi.height =height=  cv::min(y_size-y,height);
-
-
-                                //if roi is the whole image reset all values to 0
-                                if ((_cam_info_left_ros.roi.height == y_size &&
-                                     _cam_info_left_ros.roi.width == x_size) || _cam_info_left_ros.roi.width == 0 ||
-                                    _cam_info_left_ros.roi.height == 0) {
-                                    _cam_info_left_ros.roi.width = 0;
-                                    _cam_info_left_ros.roi.height = 0;
-                                    _cam_info_left_ros.roi.x_offset = 0;
-                                    _cam_info_left_ros.roi.y_offset = 0;
-                                }
-
-                                ROS_INFO("NEW ROI: x:%d y:%d w:%d h:%d", _cam_info_left_ros.roi.x_offset,
-                                         _cam_info_left_ros.roi.y_offset,
-                                         _cam_info_left_ros.roi.width, _cam_info_left_ros.roi.height);
-                                _pub_ciln.publish(_cam_info_left_ros);
-                                _ciln_received=false;
-                            }
-
-                             cnt_roi=0;
-                         }else{
-                             cnt_roi++;
-                         }
-
-                         //if something was changed update the parameters
-                         if(_ciln_received==false){
-                             updateCameraInfo(_cam_info_left_ros);
+                         //if scale has been reset or ROI has been increased update parameters
+                         if(_ciln_received==false || roi_tracker.enlargeRoi(ROI_REGION_GROW_X,ROI_REGION_GROW_Y,ROI_WAIT_RESET)){
+                             updateCameraInfo(roi_tracker.getCameraInfo());
                              return;
                          }
-
-                        //std::cout<<_cam_model_left.rawRoi()<<std::endl;
 
 
                     }
