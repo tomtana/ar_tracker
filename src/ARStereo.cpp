@@ -564,19 +564,3 @@ void ARStereo::mainLoop(void)
 
 }
 
-
-void ARStereo::safeMarker(ARMarkerInfo *target)
-{
-    char   name1[256], name2[256];
-    printf("Enter filename: ");
-    //if( fgets(name1, 256, stdin) == NULL ) return;
-    //if( sscanf(name1, "%s", name2) != 1 ) return;
-    if( arPattSave(gARTImageL, gARHandleL->xsize, gARHandleL->ysize, gARHandleL->arPixelFormat, &(gARHandleL->arParamLT->paramLTf),
-                   gARHandleL->arImageProcMode, target, 0.5, 16, "/home/tman/ros_ws/src/ar_pose_stereo/Data/furbot.patt") < 0 ) {
-        ARLOGe("ERROR!!\n");
-    }
-    else {
-        ARLOG("  Saved\n");
-    }
-
-}

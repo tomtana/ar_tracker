@@ -120,7 +120,6 @@ public:
     void cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr &);
     void arParamUpdate(ARHandle* handle, ARParam *param);
     void ARInit();
-    void safeMarker(ARMarkerInfo *target);
     void mainLoop();
 
 };
