@@ -26,11 +26,13 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/ARToolkit/include
   ARToolkit/lib
   include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/include
 )
 
 link_directories(${PROJECT_SOURCE_DIR}/ARToolkit/lib)
 
-add_executable(ar_pose_stereo src/ar_pose_stereo.cpp src/ARStereo.cpp src/ARMarkerSquare.c)
+add_executable(ar_pose_stereo src/ar_pose_stereo.cpp src/ARStereo.cpp src/ARMarkerSquare.c src/RoiTracker.cpp)
 target_link_libraries(ar_pose_stereo ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ARgsub_lite ARvideo AR AR2 ARICP ARUtil AR ARgsub_lite ARvideo AR AR2 ARICP ARUtil glut GLU GL X11 m pthread jpeg gstreamer-0.10 gobject-2.0 gmodule-2.0 gthread-2.0 xml2 glib-2.0 dc1394 raw1394)
 
 install(TARGETS ar_pose_stereo
