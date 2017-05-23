@@ -4,10 +4,10 @@
 
   
   
-  <node pkg="ar_pose_stereo" type="ar_pose_stereo" name="ar_pose_stereo_node"
+  <node pkg="ar_tracker" type="ar_tracker" name="ar_tracker_node"
     output="screen">
-	 	<param name="camera" value="/pylon_camera_left_node" />
-	 	<param name="roi" value="/ar_pose/roi/camera_info" />
+	 	<param name="camera" type="string" value="/left" />
+	 	<param name="roi" type="string" value="/ar_pose/roi/camera_info" />
 	 </node>
   
   <node pkg="tf" type="static_transform_publisher" name="world_to_cam_left"

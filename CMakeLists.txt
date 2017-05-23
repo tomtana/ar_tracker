@@ -15,14 +15,14 @@ find_package(OpenCV)
 
 
 catkin_package(
-  INCLUDE_DIRS include/ar_pose_stereo ARToolkit/include include
+  INCLUDE_DIRS include/ar_tracker ARToolkit/include include
   LIBRARIES ${PROJECT_NAME} ARToolkit/lib
   CATKIN_DEPENDS
 )
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  ${PROJECT_SOURCE_DIR}/include/ar_pose_stereo
+        ${PROJECT_SOURCE_DIR}/include/ar_tracker
   ${PROJECT_SOURCE_DIR}/ARToolkit/include
   ARToolkit/lib
   include
@@ -32,7 +32,7 @@ include_directories(
 
 link_directories(${PROJECT_SOURCE_DIR}/ARToolkit/lib)
 
-add_executable(ar_pose_stereo src/ar_pose_stereo.cpp src/ARStereo.cpp src/ARMarkerSquare.c src/RoiTracker.cpp)
+add_executable(ar_pose_stereo src/ar_tracker.cpp src/ARTracker.cpp src/ARMarkerSquare.c src/RoiTracker.cpp)
 target_link_libraries(ar_pose_stereo ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ARgsub_lite ARvideo AR AR2 ARICP ARUtil AR ARgsub_lite ARvideo AR AR2 ARICP ARUtil glut GLU GL X11 m pthread jpeg gstreamer-0.10 gobject-2.0 gmodule-2.0 gthread-2.0 xml2 glib-2.0 dc1394 raw1394)
 
 install(TARGETS ar_pose_stereo
