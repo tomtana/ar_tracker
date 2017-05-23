@@ -37,9 +37,12 @@ extern "C"
 #include <ARMarkerSquare.h>
 }
 
-#define SCALE_DEFAULT 1
-#define SCALE_WAIT_RESET 5
-#define ROI_WAIT_RESET 1
+#define SCALE_DEFAULT 0.6
+#define SCALE_WAIT_RESET 50
+#define ROI_WAIT_RESET 0
+#define ROI_REGION_GROW_X 50.0
+#define ROI_REGION_GROW_Y 25.0
+
 
 class ARStereo{
 private:
@@ -62,6 +65,8 @@ private:
     image_geometry::PinholeCameraModel _cam_model_left;
     cv_bridge::CvImagePtr _capture_left;
     ros::Time _capture_time_left;
+    ros::Time _capture_time_prev;
+    tf::Transform tf_prev;
     bool _init=false;
     tf::TransformBroadcaster _tf_br;
 
@@ -80,9 +85,9 @@ private:
     int           gARPattDetectionMode;
     int selected_marker=0; //holds the status of the marker which was selected to track. right now it is hardcoded for the first element.
     float image_scale=SCALE_DEFAULT; //parameter stores the current scaling of the image
-    int marker_size_max = 20; //maximum pixel size of marker
-    int marker_roi_x = 80;
-    int marker_roi_y = 80;
+    int marker_size_max = 40; //maximum pixel size of marker
+    int marker_roi_x = 70;
+    int marker_roi_y = 70;
 
 
     //file path to marker -> maybe replace through ros parameter
@@ -107,11 +112,13 @@ public:
     ARStereo(ros::NodeHandle & nh);
     
     ~ARStereo();
+
     void updateCameraInfo(const sensor_msgs::CameraInfo &);
     void imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img);
     void cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr &);
     void arParamUpdate(ARHandle* handle, ARParam *param);
     void ARInit();
+    void safeMarker(ARMarkerInfo *target);
     void mainLoop();
 
 };
