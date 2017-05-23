@@ -1,5 +1,5 @@
 #Marker Count
-1
+2
 
 # Entries for each marker. Format is:
 #
@@ -15,16 +15,15 @@
 #181.0
 
 #hiro.patt
-hiro_new.patt
-SINGLE
-198.5
-FILTER 5.0
-
-#furbot.patt
 #hiro_new.patt
 #SINGLE
-#200
+#198.5
 #FILTER 5.0
+
+furbot.patt
+hiro_new.patt
+SINGLE
+200
 
 #kanji.patt
 #SINGLE
