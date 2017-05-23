@@ -602,6 +602,7 @@ int arLabelingSubEWZ( ARUint8 *image, const int xsize, const int ysize, ARUint8*
                     wk_max++;
                     if( wk_max > AR_LABELING_WORK_SIZE ) {
                         ARLOGe("Error: labeling work overflow.\n");
+                        ARLOGe("AR_LABELING_WORK_SIZE= %d\n",AR_LABELING_WORK_SIZE);
                         return(-1);
                     }
                     work[wk_max-1] = *pnt2 = wk_max;

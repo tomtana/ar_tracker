@@ -40,10 +40,10 @@ AR_HOME = ../../..
 CC=gcc
 CXX=g++ -std=c++11
 CPPFLAGS = -I$(AR_HOME)/include/linux-x86_64 -I$(AR_HOME)/include
-CFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -pthread -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2
-CXXFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -pthread -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2
+CFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu
+CXXFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu
 LDFLAGS = -L$(AR_HOME)/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64
-LIBS = -lglut -lGLU -lGL -lX11 -lm -lpthread -ljpeg -pthread -lgstreamer-0.10 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lxml2 -lglib-2.0 -ldc1394 -lraw1394
+LIBS = -lglut -lGLU -lGL -lX11 -lm -lpthread -ljpeg
 AR=ar
 ARFLAGS=rs
 RANLIB = true

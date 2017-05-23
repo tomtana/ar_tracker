@@ -42,7 +42,7 @@ LIB_DIR = ../..
 
 CXX=g++ -std=c++11
 CC=gcc
-CFLAG=-O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -pthread -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I$(INC_DIR)
+CFLAG=-O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -I$(INC_DIR)
 
 #
 # For making the library

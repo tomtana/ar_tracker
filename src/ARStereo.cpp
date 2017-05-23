@@ -26,22 +26,22 @@ ARStereo::ARStereo(ros::NodeHandle & nh):
 
 
 }
-    
+
 void ARStereo::ARInit(){
-    
+
     ROS_INFO_ONCE("Initializing ARToolkit..");
 
     if ((gCparamLTL = arParamLTCreate(&_cam_param_left_art, AR_PARAM_LT_DEFAULT_OFFSET)) == NULL) {
         ROS_ERROR("setupCamera(): Error: arParamLTCreate.\n");
     }
-    
+
     // Init AR.
     gARPattHandle = arPattCreateHandle();
 	if (!gARPattHandle) {
 		ARLOGe("Error creating pattern handle.\n");
 		exit(-1);
 	}
-    
+
     gARHandleL = arCreateHandle(gCparamLTL);
     if (!gARHandleL) {
         ROS_ERROR("Error creating AR handle.\n");
@@ -53,7 +53,7 @@ void ARStereo::ARInit(){
         ROS_ERROR("Error setting pixel format.\n");
 		exit(-1);
     }
-    
+
     gAR3DHandleL = ar3DCreateHandle(&gCparamLTL->param);
     if (!gAR3DHandleL ) {
         ROS_ERROR("Error creating 3D handle.\n");
@@ -72,12 +72,12 @@ void ARStereo::ARInit(){
     //
     // Markers setup.
     //
-    
+
     // Load marker(s).
     newMarkers(markerConfigDataFilename.c_str(), gARPattHandle, &markersSquare, &markersSquareCount, &gARPattDetectionMode);
     ROS_INFO_ONCE("Marker count = %d\n", markersSquareCount);
-    
-    // 
+
+    //
     // Other ARToolKit setup.
     //
 
@@ -97,13 +97,13 @@ void ARStereo::ARInit(){
     //gARHandleL->arLabelingThreshAutoBracketOver=30;
     //gARHandleL->arLabelingThreshAutoBracketOver=30;
     //arSetLabelingThresh(gARHandleL,100);
-    
+
     //arSetMarkerExtractionMode(gARHandleL, AR_NOUSE_TRACKING_HISTORY);
     //arSetMarkerExtractionMode(gARHandleR, AR_NOUSE_TRACKING_HISTORY);
     //arSetLabelingThresh(gARHandleL,100);
     //arSetLabelingThreshMode(gARHandleL, AR_LABELING_THRESH_MODE_MANUAL); // Uncomment to force manual thresholding.
     //arSetLabelingThreshMode(gARHandleR, AR_LABELING_THRESH_MODE_MANUAL); // Uncomment to force manual thresholding.
-    
+
     // Set the pattern detection mode (template (pictorial) vs. matrix (barcode) based on
     // the marker types as defined in the marker config. file.
     arSetPatternDetectionMode(gARHandleL, AR_TEMPLATE_MATCHING_MONO); // Default = AR_TEMPLATE_MATCHING_COLOR
@@ -205,7 +205,7 @@ void ARStereo::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img)
 
     //_pub.publish(incoming_img);
     //imageRightCallback(incoming_img);
-    
+
 }
 
 
@@ -265,7 +265,7 @@ void ARStereo::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & ca
         ROS_ERROR("Camera left: Distortion Parameters from ROS MSG mismatch ARToolkit Model");
     }
     _cam_param_left_art.dist_factor[8] = 1.0;                  // scale factor
-    
+
     _cam_param_left_art.dist_function_version=4;
 
     ROS_INFO_ONCE("Continue with AR initialization..");

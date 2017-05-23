@@ -41,8 +41,8 @@ AR_CPPFLAGS = -I$(AR_HOME)/include -I$(AR_HOME)/lib/SRC/KPM/FreakMatcher
 CC=gcc
 CXX=g++ -std=c++11
 CPPFLAGS = $(AR_CPPFLAGS)
-CFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -pthread -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2
-CXXFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu -pthread -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2
+CFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu
+CXXFLAGS = -O3 -fPIC -march=core2 -DHAVE_NFT=1 -I/usr/include/x86_64-linux-gnu
 AR=ar
 ARFLAGS=rs
 RANLIB = true
