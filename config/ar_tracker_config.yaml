@@ -1,0 +1,131 @@
+##############################################################################
+#
+# ROS NODE PARAMETERS
+##############################################################################
+##
+#	camera topic base, the node will extend this to: 
+# $(camera)/image_raw 
+# $(camera)/camera_info
+#
+camera: "/left"
+##
+# 
+#	shows a window with the current roi of the marker
+show_image_window: true
+##############################################################################
+
+
+
+##############################################################################
+#
+# AR TOOLKIT PARAMETERS
+##############################################################################
+##
+#	give the path to the ar toolkit marker config file
+#
+marker_file: "/home/tman/ros_ws/src/ar_tracker/Data/markers.datt"
+##
+#	decide if and which tracking ar toolkit uses:
+#
+#     *   AR_USE_TRACKING_HISTORY              0
+#     *   AR_NOUSE_TRACKING_HISTORY            1
+#     *   AR_USE_TRACKING_HISTORY_V2           2
+##
+ar_tracking_mode: 2
+##
+#	set the ar thresholding method:
+#
+#     * AR_LABELING_THRESH_MODE_MANUAL = 0,
+#     * AR_LABELING_THRESH_MODE_AUTO_MEDIAN =1,
+#     * AR_LABELING_THRESH_MODE_AUTO_OTSU =2,
+#     * AR_LABELING_THRESH_MODE_AUTO_ADAPTIVE =3,
+#     * AR_LABELING_THRESH_MODE_AUTO_BRACKETING=4
+##
+ar_thresh_mode: 3
+##
+# Sets the pattern detection mode
+#
+#     *    AR_TEMPLATE_MATCHING_COLOR               0
+#     *    AR_TEMPLATE_MATCHING_MONO                1
+#     *    AR_MATRIX_CODE_DETECTION                 2
+#     *    AR_TEMPLATE_MATCHING_COLOR_AND_MATRIX    3
+#     *    AR_TEMPLATE_MATCHING_MONO_AND_MATRIX     4
+#     *
+#
+ar_pattern_detection_mode: 1
+##
+#	if you are using an auto thresholding method you can specify 
+# here the intervall the threshold is updated. This is not valid
+#	for the adaptive method.
+##
+ar_thresh_auto_inv: 10
+##
+# threshold: if you are using manual thresholding you can 
+# specify here the threshold you wish to use
+##
+ar_thresh: 100
+##############################################################################
+
+
+
+##############################################################################
+#
+#	ROI TRACKING PARAMETERS
+##############################################################################
+##
+# This parameter indicates the marker number which the algorithm will
+# track once it is found. This value corresponds to the id in the
+# marker config file. [0,..,n]
+#
+marker_to_track: 0
+##
+# default scale: here you can specify a scaling factor of the image. 
+# It is applied to the input. The value has to be 0<value<=1.
+##
+scale_default: 1
+##
+# Maximum marker size in pixels:
+# if the marker size in the image is bigger than this value,
+# the image/roi is scaled such that the marker size is _marker_size_max
+#
+marker_size_max: 40
+##
+# The iterations the algorithm waits till it resets the adaptive 
+# scale to scale_default when no marker was found in the frame.
+##
+scale_wait_reset: 50
+##
+# The size a region of intereset will grow in width at each 
+# interation the specified marker was not found.
+# The resulting roi has the width=2*value +old_width.
+##
+roi_region_grow_x: 50
+##
+# The size a region of intereset will grow in height at each 
+# interation the specified marker was not found.
+# The resulting roi has the height=2*value +old_height.
+##
+roi_region_grow_y: 25
+##
+#	This parameter specifies that the roi is only every 
+# nth iteration enlagred if the marker was not found.
+##
+roi_wait_reset: 0
+##
+# Standart roi height
+##
+roi_height: 70
+##
+# Standart roi width
+##
+roi_width: 70
+##
+# Predict roi by using gradient
+#
+predict_roi: true
+##
+# time delay in [s] to deem gradient still valid
+#
+predict_roi_dt: 0.3
+##############################################################################
+

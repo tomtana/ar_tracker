@@ -1,0 +1,24 @@
+
+<launch>
+  
+
+	<arg name="config_file" default="$(find ar_tracker)/config/ar_tracker_config.yaml" />
+  
+  <node pkg="ar_tracker" type="ar_tracker_node" name="ar_tracker_node"
+    output="screen">
+#	 	#<param name="marker_file" type="string" value="/home/tman/ros_ws/src/ar_tracker/Data/markers.dat" />
+	 	<param name="roi" type="string" value="/ar_pose/roi/camera_info" />
+	 	<rosparam command="load" file="$(arg config_file)" />
+	 </node>
+  
+  <node pkg="tf" type="static_transform_publisher" name="world_to_cam_left"
+    args="0 0 0.5 0 0 -1.570796327 world pylon_camera_left_node 100" />
+
+  <node pkg="tf" type="static_transform_publisher" name="left_to_right"
+    args="0.1 0 0 0 0 0 left right 100" />
+
+	<node pkg="tf" type="static_transform_publisher" name="world_to_pallet_model"
+	args="0.0 0 0 0 0 1.570796327 world pallet_model 100" />
+
+
+</launch>

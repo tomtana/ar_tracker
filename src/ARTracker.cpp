@@ -6,26 +6,66 @@ ARTracker::ARTracker(ros::NodeHandle & nh):
         _it(_nh),
         _img_received(false),
         _cam_info_received(false),
-        _cam_info_up_to_date(true)
+        _cam_info_up_to_date(true),
+        _call_count_marker_detect(0),
+        _markers_square_count(0)
 {
     std::string topic_image_raw; //image topic
-    //read param
+
+    //read param from ros
     _nh.param<std::string>(ros::this_node::getName()+"/camera",topic_image_raw,"/left"); //image topic
     _nh.param<std::string>(ros::this_node::getName()+"/marker_file", _ar_marker_config_data_filename,"../../../src/ar_tracker/Data/markers.dat"); //path to marker config file
     _nh.param<int>(ros::this_node::getName()+"/ar_tracking_mode", _ar_tracking_mode, AR_USE_TRACKING_HISTORY_V2);
-    _nh.param<int>(ros::this_node::getName()+"/ar_thresh_mode", _ar_threshold_mode, AR_LABELING_THRESH_MODE_AUTO_ADAPTIVE);
-    _nh.param<int>(ros::this_node::getName()+"/ar_thesh_auto_inv", ar_thresh_mode_auto_intervall, 10);
-    _nh.param<int>(ros::this_node::getName()+"/ar_thesh", _ar_thresh, 100);
+    _nh.param<int>(ros::this_node::getName()+"/ar_thresh_mode", _ar_thresh_mode, AR_LABELING_THRESH_MODE_AUTO_ADAPTIVE);
+    _nh.param<int>(ros::this_node::getName()+"/ar_thresh_auto_inv", ar_thresh_mode_auto_intervall, 10);
+    _nh.param<int>(ros::this_node::getName()+"/ar_thresh", _ar_thresh, 100);
+    _nh.param<int>(ros::this_node::getName()+"/ar_pattern_detection_mode", _ar_pattern_detection_mode, AR_TEMPLATE_MATCHING_MONO);
+
+    _nh.param<int>(ros::this_node::getName()+"/marker_to_track", _marker_to_track, 0);
+    _nh.param<double>(ros::this_node::getName()+"/scale_default", _scale_default, 0.6);
+    _nh.param<int>(ros::this_node::getName()+"/marker_size_max", _marker_size_max, 40);
+    _nh.param<int>(ros::this_node::getName()+"/scale_wait_reset",_scale_wait_reset , 50);
+    _nh.param<int>(ros::this_node::getName()+"/roi_region_grow_x", _roi_region_grow_x, 50);
+    _nh.param<int>(ros::this_node::getName()+"/roi_region_grow_y", _roi_region_grow_y, 25);
+
+    _nh.param<int>(ros::this_node::getName()+"/roi_wait_reset", _roi_wait_reset, 0);
+    _nh.param<int>(ros::this_node::getName()+"/roi_height", _roi_height, 70);
+    _nh.param<int>(ros::this_node::getName()+"/roi_width", _roi_width, 70);
+    _nh.param<bool>(ros::this_node::getName()+"/show_image_window", _show_image_window, true);
+    _nh.param<bool>(ros::this_node::getName()+"/predict_roi", _predict_roi, true);
+    _nh.param<double>(ros::this_node::getName()+"/predict_roi_dt", _predict_roi_dt, 0.3);
+
+    //set current scale to scale default value
+    _image_scale=(float)_scale_default;
+
 
     //init all parameters and so on and so forth
     //_pub = _it.advertise("test", 1);
-    ROS_INFO("Subscribing to camera topics: \n%s/image_raw \n%s/camera_info", topic_image_raw.data(),topic_image_raw.data());
+    ROS_INFO("\n\nLOADED PARAMETERS:");
+    ROS_INFO("camera_info: \t\t\t%s/image_raw", topic_image_raw.data());
+    ROS_INFO("image_raw: \t\t\t%s/camera_info", topic_image_raw.data());
     _sub_il = _it.subscribe(topic_image_raw+"/image_raw", 1, &ARTracker::imageLeftCallback, this);
     _sub_cil = _nh.subscribe(topic_image_raw +"/camera_info",1,&ARTracker::cameraInfoLeftCallback ,this);
 
-
-    ROS_INFO("AR_LABELING_WORK_SIZE: %d",AR_LABELING_WORK_SIZE);
-
+    ROS_INFO("AR_LABELING_WORK_SIZE: \t\t%d",AR_LABELING_WORK_SIZE);
+    ROS_INFO("marker_file: \t\t\t%s",_ar_marker_config_data_filename.data());
+    ROS_INFO("ar_tracking_mode: \t\t%d",_ar_tracking_mode);
+    ROS_INFO("ar_thresh_mode: \t\t%d",_ar_thresh_mode);
+    ROS_INFO("ar_thresh_auto_inv: \t\t%d",ar_thresh_mode_auto_intervall);
+    ROS_INFO("ar_thresh: \t\t\t%d",_ar_thresh);
+    ROS_INFO("ar_pattern_detection_mode: \t\t%d",_ar_pattern_detection_mode);
+    ROS_INFO("marker_to_track: \t\t%d",_marker_to_track);
+    ROS_INFO("scale_default: \t\t\t%.2f",_scale_default);
+    ROS_INFO("marker_size_max: \t\t%d",_marker_size_max);
+    ROS_INFO("scale_wait_reset: \t\t%d",_scale_wait_reset);
+    ROS_INFO("roi_region_grow_x: \t\t%d",_roi_region_grow_x);
+    ROS_INFO("roi_region_grow_y: \t\t%d",_roi_region_grow_y);
+    ROS_INFO("roi_wait_reset: \t\t%d",_roi_wait_reset);
+    ROS_INFO("roi_height: \t\t\t%d",_roi_height);
+    ROS_INFO("roi_width: \t\t\t%d",_roi_width);
+    ROS_INFO("show_image_window: \t\t%d",_show_image_window);
+    ROS_INFO("predict_roi: \t\t\t%d",_predict_roi);
+    ROS_INFO("predict_roi_dt: \t\t%.2f",_predict_roi_dt);
 
 
 }
@@ -75,7 +115,7 @@ void ARTracker::ARInit(){
 
     ///Configure detection
     arSetMarkerExtractionMode(_ar_handle, _ar_tracking_mode);
-    arSetLabelingThreshMode(_ar_handle,static_cast<AR_LABELING_THRESH_MODE>(_ar_threshold_mode));
+    arSetLabelingThreshMode(_ar_handle,static_cast<AR_LABELING_THRESH_MODE>(_ar_thresh_mode));
     arSetLabelingThresh(_ar_handle,_ar_thresh );
 
     //in case auto thresholding methods are chosen (except the adaptive method) you can specify here the intervall the threshold gets updated
@@ -132,7 +172,7 @@ void ARTracker::arParamUpdate(ARHandle *handle,ARParam *param) {
         exit(-1);
     }
     arSetMarkerExtractionMode(_ar_handle, _ar_tracking_mode);
-    arSetLabelingThreshMode(_ar_handle, static_cast<AR_LABELING_THRESH_MODE>(_ar_threshold_mode));
+    arSetLabelingThreshMode(_ar_handle, static_cast<AR_LABELING_THRESH_MODE>(_ar_thresh_mode));
     arSetLabelingThresh(_ar_handle,_ar_thresh );
     //in case auto thresholding methods are chosen (except the adaptive method) you can specify here the intervall the threshold gets updated
     arSetLabelingThreshModeAutoInterval(_ar_handle,ar_thresh_mode_auto_intervall);
@@ -160,7 +200,7 @@ void ARTracker::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img
             _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
 
         }
-        if(image_scale<1){
+        if(_image_scale<1){
             //resize image
             cv::Size size_new(_ar_cam_param.xsize,_ar_cam_param.ysize);
             cv::resize(_capture_left->image,_capture_left->image,size_new,cv::INTER_AREA);
@@ -206,14 +246,14 @@ void ARTracker::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & c
     memcpy(&_ar_cam_param.mat[2][0],&_cam_model.intrinsicMatrix()(2,0), 3*sizeof(double));
 
     //adjusting the scale
-    _ar_cam_param.mat[0][0] *= image_scale; //fx*scale
-    _ar_cam_param.mat[0][2] *= image_scale; //cx*scale
-    _ar_cam_param.mat[1][1] *= image_scale; //fy*scale
-    _ar_cam_param.mat[1][2] *= image_scale; //cy*scale
+    _ar_cam_param.mat[0][0] *= _image_scale; //fx*scale
+    _ar_cam_param.mat[0][2] *= _image_scale; //cx*scale
+    _ar_cam_param.mat[1][1] *= _image_scale; //fy*scale
+    _ar_cam_param.mat[1][2] *= _image_scale; //cy*scale
 
 
-    _ar_cam_param.xsize = (int)round(_cam_model.reducedResolution().width*image_scale);
-    _ar_cam_param.ysize = (int)round(_cam_model.reducedResolution().height*image_scale);
+    _ar_cam_param.xsize = (int)round(_cam_model.reducedResolution().width*_image_scale);
+    _ar_cam_param.ysize = (int)round(_cam_model.reducedResolution().height*_image_scale);
 
 
     //set 0 to the last column
@@ -222,15 +262,15 @@ void ARTracker::cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr & c
     _ar_cam_param.mat[2][3] = 0;
 
 
-    _ar_cam_param.dist_factor[6] = (int)(_cam_model.cx()*image_scale);//_cam_info.K[2];       // x0 = cX from openCV calibration
-    _ar_cam_param.dist_factor[7] = (int)(_cam_model.cy()*image_scale);//_cam_info.K[5];       // y0 = cY from openCV calibration
+    _ar_cam_param.dist_factor[6] = (int)(_cam_model.cx()*_image_scale);//_cam_info.K[2];       // x0 = cX from openCV calibration
+    _ar_cam_param.dist_factor[7] = (int)(_cam_model.cy()*_image_scale);//_cam_info.K[5];       // y0 = cY from openCV calibration
     if ( _cam_info.distortion_model == "plumb_bob" && _cam_info.D.size() == 5){
       _ar_cam_param.dist_factor[0]= _cam_info.D[0];  //k0
       _ar_cam_param.dist_factor[1]= _cam_info.D[1];  //k1
       _ar_cam_param.dist_factor[2]= _cam_info.D[2];  //p0
       _ar_cam_param.dist_factor[3]= _cam_info.D[3];  //p1
-      _ar_cam_param.dist_factor[4]= _cam_model.fx()*image_scale; // _cam_info.K[0];  //fx
-      _ar_cam_param.dist_factor[5]= _cam_model.fy()*image_scale;//_cam_info.K[4];  //fy
+      _ar_cam_param.dist_factor[4]= _cam_model.fx()*_image_scale; // _cam_info.K[0];  //fx
+      _ar_cam_param.dist_factor[5]= _cam_model.fy()*_image_scale;//_cam_info.K[4];  //fy
     }
     else{
       //_ar_cam_param.dist_factor[2] = 0;                  // We don't know the right value, so ignore it
@@ -277,22 +317,22 @@ void ARTracker::updateCameraInfo(const sensor_msgs::CameraInfo &cam_info){
     memcpy(&_ar_cam_param.mat[2][0],&_cam_model.intrinsicMatrix()(2,0), 3*sizeof(double));
 
     //adjusting the scale
-    _ar_cam_param.mat[0][0] *= image_scale;
-    _ar_cam_param.mat[0][2] *= image_scale;
-    _ar_cam_param.mat[1][1] *= image_scale;
-    _ar_cam_param.mat[1][2] *= image_scale;
+    _ar_cam_param.mat[0][0] *= _image_scale;
+    _ar_cam_param.mat[0][2] *= _image_scale;
+    _ar_cam_param.mat[1][1] *= _image_scale;
+    _ar_cam_param.mat[1][2] *= _image_scale;
 
     //compute new image size
     //todo compute always image size which is odd/even.. maybe needed when preprocessing is wanted
-    _ar_cam_param.xsize = (int)round(_cam_model.reducedResolution().width*image_scale);
-    _ar_cam_param.ysize = (int)round(_cam_model.reducedResolution().height*image_scale);
+    _ar_cam_param.xsize = (int)round(_cam_model.reducedResolution().width*_image_scale);
+    _ar_cam_param.ysize = (int)round(_cam_model.reducedResolution().height*_image_scale);
 
-    _ar_cam_param.dist_factor[6] = (int)(_cam_model.cx()*image_scale);//_cam_info.K[2];       // x0 = cX from openCV calibration
-    _ar_cam_param.dist_factor[7] = (int)(_cam_model.cy()*image_scale);//_cam_info.K[5];       // y0 = cY from openCV calibration
+    _ar_cam_param.dist_factor[6] = (int)(_cam_model.cx()*_image_scale);//_cam_info.K[2];       // x0 = cX from openCV calibration
+    _ar_cam_param.dist_factor[7] = (int)(_cam_model.cy()*_image_scale);//_cam_info.K[5];       // y0 = cY from openCV calibration
 
     if ( _cam_info.distortion_model == "plumb_bob" && _cam_info.D.size() == 5){
-        _ar_cam_param.dist_factor[4]= _cam_model.fx()*image_scale; // _cam_info.K[0];  //fx
-        _ar_cam_param.dist_factor[5]= _cam_model.fy()*image_scale;//_cam_info.K[4];  //fy
+        _ar_cam_param.dist_factor[4]= _cam_model.fx()*_image_scale; // _cam_info.K[0];  //fx
+        _ar_cam_param.dist_factor[5]= _cam_model.fy()*_image_scale;//_cam_info.K[4];  //fy
     }
     else{
         //_ar_cam_param.dist_factor[2] = 0;                  // We don't know the right value, so ignore it
@@ -345,9 +385,11 @@ void ARTracker::mainLoop(void)
         clahe->setTilesGridSize(cv::Size(7,7));
         clahe->apply(_capture_left->image,_capture_left->image);
          */
-        cv::namedWindow("after preprocess",CV_WINDOW_AUTOSIZE);
-        cv::imshow("after preprocess",_capture_left->image);
-        cv::waitKey(20);
+        if(_show_image_window) {
+            cv::namedWindow("after preprocess", CV_WINDOW_AUTOSIZE);
+            cv::imshow("after preprocess", _capture_left->image);
+            cv::waitKey(20);
+        }
 
         //Cast CV image to ar toolkit image
         ARUint8		*ar_image  = (ARUint8 *) ((IplImage) _capture_left->image).imageData;
@@ -356,6 +398,11 @@ void ARTracker::mainLoop(void)
             //cv::imshow("test ",_capture_left->image);
             //cv::waitKey(0);
             _call_count_marker_detect++; // Increment ARToolKit FPS counter.
+            //compute framerate
+            time_elapsed=(ros::Time::now()-time_prev);
+            framerate=(1.0/(float)time_elapsed.toSec());
+            time_prev=ros::Time::now();
+
 
             // Detect the markers in the video frame.
             if (arDetectMarker(_ar_handle, ar_image) < 0) {
@@ -441,13 +488,10 @@ void ARTracker::mainLoop(void)
                     //arUtilMatMul((const ARdouble (*)[4])transL2R, (const ARdouble (*)[4])_ar_markers_square[i].trans, transR);
                     //arglCameraViewRH((const ARdouble (*)[4])transR, poseR.T, 1.0f /*VIEW_SCALEFACTOR*/);
                     // Tell any dependent objects about the update.
-                    time_elapsed=(ros::Time::now()-time_prev);
-                    framerate=(1.0/(float)time_elapsed.toSec());
-                    time_prev=ros::Time::now();
                     ROS_INFO("[%2d] Result:\terr: %.2f\tposXYZ: [%.2f,\t%.2f,\t%.2f]\t%.2f fps\n", i, err,tf.getOrigin().x(),tf.getOrigin().y(),tf.getOrigin().z(),framerate);
                     //marker has been detected, now reduce scale of the image and
-                    //if (_ar_markers_square[i].validPrev && i== _selected_marker) {
-                    if ( i== _selected_marker) {
+                    //if (_ar_markers_square[i].validPrev && i== _marker_to_track) {
+                    if ( i== _marker_to_track) {
 
                         ///compute new scale
                         //get vertex and compute average length of pixel of the marker in the image
@@ -468,15 +512,19 @@ void ARTracker::mainLoop(void)
                         p2d.y-=_cam_model.fullIntrinsicMatrix()(1,2);
                         //ROS_INFO("P2D final [%.1f,%.1f]",p2d.x,p2d.y);
                         int l= abs(p2d.x);
-                        if(l>marker_size_max){
-                            image_scale=(float)(marker_size_max)/(float)l;
-                            ROS_INFO("New scale= %0.2f , l= %d",image_scale,l);
-                        }else{
-                            image_scale=SCALE_DEFAULT;
+                        //check if length of the marker projection is bigger than the maximal specified marker size and
+                        //compute the new scale
+                        if(l>_marker_size_max){
+                            _image_scale=(float)(_marker_size_max)/(float)l;
+                            ROS_DEBUG("New scale= %0.2f , current marker size in pixel= %d",_image_scale,l);
+                        }
+                        //if the length is smaller set the image to the maximal resolution
+                        else{
+                            _image_scale=1;
                         }
 
                         //update roi
-                        _roi_tracker.updateRoi(tf.getOrigin(),marker_roi_x,marker_roi_y,_ar_markers_square[i].marker_height/1000.0,_capture_time_left,0.3);
+                        _roi_tracker.updateRoi(tf.getOrigin(),_roi_width,_roi_height,_ar_markers_square[i].marker_height/1000.0,_capture_time_left,_predict_roi,_predict_roi_dt);
                         //publish and update
                         //_pub_ciln.publish(_roi_tracker.getCameraInfo());
                         updateCameraInfo(_roi_tracker.getCameraInfo());
@@ -487,12 +535,12 @@ void ARTracker::mainLoop(void)
                     //marker[i] was not detected
                 else {
                     //if marker i is the one we ware tracking
-                     if (!_ar_markers_square[i].validPrev && i== _selected_marker){
+                     if (!_ar_markers_square[i].validPrev && i== _marker_to_track){
                          //if cnt reached SCALE_WAIT_RESET reset scale to default value
                          static int cnt_scale=0;
-                         if(cnt_scale>=SCALE_WAIT_RESET){
+                         if(cnt_scale>=_scale_wait_reset){
                              ROS_INFO("Reset scale");
-                             image_scale=SCALE_DEFAULT;
+                             _image_scale=(float)_scale_default;
                              cnt_scale=0;
                              _cam_info_up_to_date=false;
                          }else{
@@ -500,7 +548,7 @@ void ARTracker::mainLoop(void)
                          }
 
                          //if scale has been reset or ROI has been increased update parameters
-                         if(_cam_info_up_to_date==false || _roi_tracker.enlargeRoi(ROI_REGION_GROW_X,ROI_REGION_GROW_Y,ROI_WAIT_RESET)){
+                         if(_cam_info_up_to_date==false || _roi_tracker.enlargeRoi(_roi_region_grow_x,_roi_region_grow_y,_roi_wait_reset)){
                              updateCameraInfo(_roi_tracker.getCameraInfo());
                              return;
                          }

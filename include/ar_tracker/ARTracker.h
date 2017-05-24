@@ -40,11 +40,6 @@ extern "C"
 #include <ARMarkerSquare.h>
 }
 
-#define SCALE_DEFAULT 0.6
-#define SCALE_WAIT_RESET 50
-#define ROI_WAIT_RESET 0
-#define ROI_REGION_GROW_X 50.0
-#define ROI_REGION_GROW_Y 25.0
 
 
 class ARTracker{
@@ -76,10 +71,10 @@ private:
     ARParam _ar_cam_param;
     //Infos about Markers.
     ARMarkerSquare *_ar_markers_square = NULL;
-    int _markers_square_count = 0;
+    int _markers_square_count;
     // Structures holding information ofr the detection process
     ARHandle		*_ar_handle = NULL;
-    long			 _call_count_marker_detect = 0;
+    long			 _call_count_marker_detect;
     ARPattHandle	*_ar_patt_handle = NULL;
     int           gARPattDetectionMode;
     //file path to marker -> maybe replace through ros parameter
@@ -105,7 +100,7 @@ private:
      * AR_LABELING_THRESH_MODE_AUTO_ADAPTIVE =3,
      * AR_LABELING_THRESH_MODE_AUTO_BRACKETING=4
      */
-    int _ar_threshold_mode;
+    int _ar_thresh_mode;
 
     /**
      * Ar toolkit image type to use.
@@ -125,14 +120,20 @@ private:
     int _ar_thresh; //threshold for manual thesholding
 
     ///Settings for detection process
-    int _selected_marker=0; //holds the status of the marker which was selected to track. right now it is hardcoded for the first element.
-    float image_scale=SCALE_DEFAULT; //parameter stores the current scaling of the image
-    int marker_size_max = 40; //maximum pixel size of marker
-    int marker_roi_x = 70;
-    int marker_roi_y = 70;
-
-
-
+    int _marker_to_track; //holds the status of the marker which was selected to track. right now it is hardcoded for the first element.
+    float _image_scale; //parameter stores the current scaling of the image
+    int _marker_size_max; //maximum pixel size of marker
+    int _roi_width;
+    int _roi_height;
+    double _scale_default;
+    int _scale_wait_reset;
+    int _roi_wait_reset;
+    int _roi_region_grow_x;
+    int _roi_region_grow_y;
+    bool _show_image_window;
+    int _ar_pattern_detection_mode;
+    bool _predict_roi;
+    double _predict_roi_dt;
     
     // Transformation matrix retrieval.
     AR3DHandle	*gAR3DHandleL = NULL;

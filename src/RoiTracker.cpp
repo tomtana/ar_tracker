@@ -39,12 +39,14 @@ RoiTracker::updateRoi(tf::Vector3 pos3d, int roi_width, int roi_height,double ma
 
     if(predict){
         tf::Vector3 grad=pos3d-tf_prev;
-        //ROS_INFO("POS 3d=  [%.2f, %.2f, %.2f]",pos3d.x,pos3d.y,pos3d.z);
+        ROS_INFO("Roi prediction:");
+        ROS_INFO("POS 3d=  [%.2f, %.2f, %.2f]",pos3d_pred.x,pos3d_pred.y,pos3d_pred.z);
         if(dt.toSec()<dt_max){
             pos3d_pred=pos3d_pred+cv::Point3d(grad.x(),
                                               grad.y(),
                                               grad.z());
-            //ROS_INFO("POS pre= [%.2f, %.2f, %.2f]",pos3d.x,pos3d.y,pos3d.z);
+
+            ROS_INFO("POS pre= [%.2f, %.2f, %.2f]",pos3d_pred.x,pos3d_pred.y,pos3d_pred.z);
         }
     }
 
