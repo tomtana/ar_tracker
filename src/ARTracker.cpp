@@ -11,7 +11,7 @@ ARTracker::ARTracker(ros::NodeHandle & nh):
     std::string topic_image_raw; //image topic
     //read param
     _nh.param<std::string>(ros::this_node::getName()+"/camera",topic_image_raw,"/left"); //image topic
-    _nh.param<std::string>(ros::this_node::getName()+"/marker_file", _ar_marker_config_data_filename, "../../../src/ar_tracker/Data/markers.dat"); //path to marker config file
+    _nh.param<std::string>(ros::this_node::getName()+"/marker_file", _ar_marker_config_data_filename,"../../../src/ar_tracker/Data/markers.dat"); //path to marker config file
     _nh.param<int>(ros::this_node::getName()+"/ar_tracking_mode", _ar_tracking_mode, AR_USE_TRACKING_HISTORY_V2);
     _nh.param<int>(ros::this_node::getName()+"/ar_thresh_mode", _ar_threshold_mode, AR_LABELING_THRESH_MODE_AUTO_ADAPTIVE);
     _nh.param<int>(ros::this_node::getName()+"/ar_thesh_auto_inv", ar_thresh_mode_auto_intervall, 10);
@@ -155,7 +155,7 @@ void ARTracker::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img
         if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
             _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
             _capture_left->image=_capture_left->image(_cam_model.rawRoi()).clone();
-            ROS_INFO("Mat Size: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
+            ROS_DEBUG("Mat Size Roi: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
         }else{
             _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
 
@@ -264,7 +264,7 @@ void ARTracker::updateCameraInfo(const sensor_msgs::CameraInfo &cam_info){
         ROS_DEBUG("updateCameraInfo: camera_info received but not updated since it has not changed");
         return;
     }else{
-        ROS_INFO("updateCameraInfo:\tcamera info has changed.");
+        ROS_DEBUG("updateCameraInfo:\tcamera info has changed.");
         //std::cout<<cam_model_tmp.cameraInfo()<<std::endl;
     }
     //copy new camera info and create pinhole model
@@ -287,19 +287,10 @@ void ARTracker::updateCameraInfo(const sensor_msgs::CameraInfo &cam_info){
     _ar_cam_param.xsize = (int)round(_cam_model.reducedResolution().width*image_scale);
     _ar_cam_param.ysize = (int)round(_cam_model.reducedResolution().height*image_scale);
 
-    //set 0 to the last column
-    _ar_cam_param.mat[0][3] = 0;
-    _ar_cam_param.mat[1][3] = 0;
-    _ar_cam_param.mat[2][3] = 0;
-
     _ar_cam_param.dist_factor[6] = (int)(_cam_model.cx()*image_scale);//_cam_info.K[2];       // x0 = cX from openCV calibration
     _ar_cam_param.dist_factor[7] = (int)(_cam_model.cy()*image_scale);//_cam_info.K[5];       // y0 = cY from openCV calibration
 
     if ( _cam_info.distortion_model == "plumb_bob" && _cam_info.D.size() == 5){
-        _ar_cam_param.dist_factor[0]= _cam_info.D[0];  //k0
-        _ar_cam_param.dist_factor[1]= _cam_info.D[1];  //k1
-        _ar_cam_param.dist_factor[2]= _cam_info.D[2];  //p0
-        _ar_cam_param.dist_factor[3]= _cam_info.D[3];  //p1
         _ar_cam_param.dist_factor[4]= _cam_model.fx()*image_scale; // _cam_info.K[0];  //fx
         _ar_cam_param.dist_factor[5]= _cam_model.fy()*image_scale;//_cam_info.K[4];  //fy
     }
@@ -307,9 +298,6 @@ void ARTracker::updateCameraInfo(const sensor_msgs::CameraInfo &cam_info){
         //_ar_cam_param.dist_factor[2] = 0;                  // We don't know the right value, so ignore it
         ROS_ERROR("Camera left: Distortion Parameters from ROS MSG mismatch ARToolkit Model");
     }
-    _ar_cam_param.dist_factor[8] = 1.0;                  // scale factor
-    _ar_cam_param.dist_function_version=4;
-
     //update ar_detection parameters
     arParamUpdate(_ar_handle,&_ar_cam_param);
     //set the state again true
@@ -417,16 +405,12 @@ void ARTracker::mainLoop(void)
                         markerInfoL[kL].cf = markerInfoL[kL].cfMatrix;
                         markerInfoL[kL].dir = markerInfoL[kL].dirMatrix;
                     }
-
                 }
-
                 if (kL != -1 ) {
-
                     err = arGetTransMatSquare(gAR3DHandleL,&markerInfoL[kL],_ar_markers_square[i].marker_width, _ar_markers_square[i].trans);
-
-                    if (err < 10.0) _ar_markers_square[i].valid = TRUE;
-
-
+                    if (err < 10.0) {
+                        _ar_markers_square[i].valid = TRUE;
+                    }
                 }
 
                 if (_ar_markers_square[i].valid) {
@@ -453,9 +437,9 @@ void ARTracker::mainLoop(void)
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[0][0],_ar_markers_square[i].trans[0][1], _ar_markers_square[i].trans[0][2],_ar_markers_square[i].trans[0][3] );
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[1][0],_ar_markers_square[i].trans[1][1], _ar_markers_square[i].trans[1][2],_ar_markers_square[i].trans[1][3] );
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[2][0],_ar_markers_square[i].trans[2][1], _ar_markers_square[i].trans[2][2],_ar_markers_square[i].trans[2][3] );
-                    arglCameraViewRH((const ARdouble (*)[4])_ar_markers_square[i].trans, _ar_markers_square[i].pose.T, 1.0f /*VIEW_SCALEFACTOR*/);
-                    arUtilMatMul((const ARdouble (*)[4])transL2R, (const ARdouble (*)[4])_ar_markers_square[i].trans, transR);
-                    arglCameraViewRH((const ARdouble (*)[4])transR, poseR.T, 1.0f /*VIEW_SCALEFACTOR*/);
+                    //arglCameraViewRH((const ARdouble (*)[4])_ar_markers_square[i].trans, _ar_markers_square[i].pose.T, 1.0f /*VIEW_SCALEFACTOR*/);
+                    //arUtilMatMul((const ARdouble (*)[4])transL2R, (const ARdouble (*)[4])_ar_markers_square[i].trans, transR);
+                    //arglCameraViewRH((const ARdouble (*)[4])transR, poseR.T, 1.0f /*VIEW_SCALEFACTOR*/);
                     // Tell any dependent objects about the update.
                     time_elapsed=(ros::Time::now()-time_prev);
                     framerate=(1.0/(float)time_elapsed.toSec());
@@ -494,16 +478,17 @@ void ARTracker::mainLoop(void)
                         //update roi
                         _roi_tracker.updateRoi(tf.getOrigin(),marker_roi_x,marker_roi_y,_ar_markers_square[i].marker_height/1000.0,_capture_time_left,0.3);
                         //publish and update
-                        _pub_ciln.publish(_roi_tracker.getCameraInfo());
+                        //_pub_ciln.publish(_roi_tracker.getCameraInfo());
                         updateCameraInfo(_roi_tracker.getCameraInfo());
                         return;
 
                     }
                 }
+                    //marker[i] was not detected
                 else {
-
+                    //if marker i is the one we ware tracking
                      if (!_ar_markers_square[i].validPrev && i== _selected_marker){
-                         //reset scale
+                         //if cnt reached SCALE_WAIT_RESET reset scale to default value
                          static int cnt_scale=0;
                          if(cnt_scale>=SCALE_WAIT_RESET){
                              ROS_INFO("Reset scale");
@@ -524,7 +509,6 @@ void ARTracker::mainLoop(void)
                     }
                 }
             }
-                // Tell GLUT the display has changed.
             } else {
 
         }
