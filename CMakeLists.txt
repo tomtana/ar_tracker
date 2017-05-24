@@ -27,7 +27,6 @@ include_directories(
         ARToolkit/lib
         include
         ${PROJECT_SOURCE_DIR}/src
-        ${PROJECT_SOURCE_DIR}/include
 )
 
 link_directories(${PROJECT_SOURCE_DIR}/ARToolkit/lib)

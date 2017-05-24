@@ -141,6 +141,7 @@ ARTracker::~ARTracker(){
     ar3DDeleteHandle(&gAR3DHandleL);
     arDeleteHandle(_ar_handle);
     arParamLTFree(&gCparamLTL);
+    deleteMarkers(&_ar_markers_square, &_markers_square_count, _ar_patt_handle);
 }
 
 void ARTracker::arParamUpdate(ARHandle *handle,ARParam *param) {

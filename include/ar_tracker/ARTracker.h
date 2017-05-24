@@ -19,24 +19,24 @@
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
 #include <cv_bridge/cv_bridge.h>
-#include <string.h>
 #include <tf/transform_broadcaster.h>
 #include <image_geometry/pinhole_camera_model.h>
+
+//c++ includes
+#include <string.h>
 
 //Own Classes
 #include <RoiTracker.h>
 
+//ARToolkit includes
 extern "C" 
 {
-//ARToolkit includes
 #include <stdio.h>
 #include <stdlib.h>
-#include <GL/glut.h>
 #include <AR/config.h>
 #include <AR/video.h>
 #include <AR/param.h>
 #include <AR/ar.h>
-#include <AR/gsub_lite.h>
 #include <ARMarkerSquare.h>
 }
 
