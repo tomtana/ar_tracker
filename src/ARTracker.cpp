@@ -193,13 +193,10 @@ void ARTracker::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img
 
     try
     {
+        _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
         if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
-            _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
             _capture_left->image=_capture_left->image(_cam_model.rawRoi()).clone();
             ROS_DEBUG("Mat Size Roi: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
-        }else{
-            _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
-
         }
         if(_image_scale<1){
             //resize image
@@ -207,6 +204,7 @@ void ARTracker::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img
             cv::resize(_capture_left->image,_capture_left->image,size_new,cv::INTER_AREA);
             ROS_DEBUG("Mat Size after Scaling: [%d,%d]",size_new.height,size_new.width);
         }
+
 
     }
     catch (cv_bridge::Exception& e)
@@ -525,7 +523,7 @@ void ARTracker::mainLoop(void)
                         }
 
                         //update roi
-                        _roi_tracker.updateRoi(tf.getOrigin(),_roi_width,_roi_height,_ar_markers_square[i].marker_height/1000.0,_capture_time_left,_predict_roi,_predict_roi_dt);
+                        _roi_tracker.updateRoi(tf.getOrigin(),_roi_width/_image_scale,_roi_height/_image_scale,_ar_markers_square[i].marker_height/1000.0,_capture_time_left,_predict_roi,_predict_roi_dt);
                         //publish and update
                         //_pub_ciln.publish(_roi_tracker.getCameraInfo());
                         updateCameraInfo(_roi_tracker.getCameraInfo());
