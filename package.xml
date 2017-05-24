@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>ar_pose_stereo</name>
+  <name>ar_tracker</name>
   <version>0.0.1</version>
   <description>Bla.</description>
 
