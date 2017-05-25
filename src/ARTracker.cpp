@@ -194,17 +194,6 @@ void ARTracker::imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img
     try
     {
         _capture_left = cv_bridge::toCvCopy (incoming_img, sensor_msgs::image_encodings::MONO8);
-        if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
-            _capture_left->image=_capture_left->image(_cam_model.rawRoi()).clone();
-            ROS_DEBUG("Mat Size Roi: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
-        }
-        if(_image_scale<1){
-            //resize image
-            cv::Size size_new(_ar_cam_param.xsize,_ar_cam_param.ysize);
-            cv::resize(_capture_left->image,_capture_left->image,size_new,cv::INTER_AREA);
-            ROS_DEBUG("Mat Size after Scaling: [%d,%d]",size_new.height,size_new.width);
-        }
-
 
     }
     catch (cv_bridge::Exception& e)
@@ -365,17 +354,28 @@ void ARTracker::mainLoop(void)
 
 
         //check if new image was received and reset the variable to false
-        if(!_img_received){
+        if(!_img_received && !_capture_left->image.empty()){
             ROS_DEBUG("Waiting for image..");
             return;
         }else{
             _img_received=false;
         }
-        // Grab a video frame.
         //convert from opencv
         ROS_DEBUG("Starting detection");
+
+        //If Roi, then extraxct it from the image
+        if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
+            _capture_left->image=_capture_left->image(_cam_model.rawRoi()).clone();
+            ROS_DEBUG("Mat Size Roi: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
+        }
+        //scale image
+        if(_image_scale<1){
+            //resize image
+            cv::Size size_new(_ar_cam_param.xsize,_ar_cam_param.ysize);
+            cv::resize(_capture_left->image,_capture_left->image,size_new,cv::INTER_AREA);
+            ROS_DEBUG("Mat Size after Scaling: [%d,%d]",size_new.height,size_new.width);
+        }
         equalizeHist( _capture_left->image, _capture_left->image );
-        int s;
 
         //cv::GaussianBlur( _capture_left->image, _capture_left->image, cv::Size( 7,7 ), 0, 0 );
         /*
@@ -394,8 +394,6 @@ void ARTracker::mainLoop(void)
         ARUint8		*ar_image  = (ARUint8 *) ((IplImage) _capture_left->image).imageData;
         //update parameters
         if (ar_image) {
-            //cv::imshow("test ",_capture_left->image);
-            //cv::waitKey(0);
             _call_count_marker_detect++; // Increment ARToolKit FPS counter.
             //compute framerate
             time_elapsed=(ros::Time::now()-time_prev);
@@ -516,6 +514,9 @@ void ARTracker::mainLoop(void)
                         if(l>_marker_size_max){
                             _image_scale=(float)(_marker_size_max)/(float)l;
                             ROS_DEBUG("New scale= %0.2f , current marker size in pixel= %d",_image_scale,l);
+                            if(_image_scale<=0){
+                                ROS_ERROR("Image scale <=0");
+                            }
                         }
                         //if the length is smaller set the image to the maximal resolution
                         else{

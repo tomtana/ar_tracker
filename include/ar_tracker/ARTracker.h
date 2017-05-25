@@ -153,10 +153,22 @@ public:
     ~ARTracker();
 
     void updateCameraInfo(const sensor_msgs::CameraInfo &);
+    /*
+     * Ros callback function for the image
+     */
     void imageLeftCallback(const sensor_msgs::ImageConstPtr& incoming_img);
+    /**
+     * Ros callback function for camera info.
+     * Converts the Camera calibration to the ARToolkit format.
+     */
     void cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr &);
+
     void arParamUpdate(ARHandle* handle, ARParam *param);
+    /**
+     * Initializes ARToolkit parameters
+     */
     void ARInit();
+
     void mainLoop();
 
 };

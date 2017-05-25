@@ -7,7 +7,7 @@
 # $(camera)/image_raw 
 # $(camera)/camera_info
 #
-camera: "/pylon_camera_left_node"
+camera: "/left"
 ##
 # 
 #	shows a window with the current roi of the marker
