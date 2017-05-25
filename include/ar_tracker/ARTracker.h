@@ -152,7 +152,7 @@ public:
     
     ~ARTracker();
 
-    void updateCameraInfo(const sensor_msgs::CameraInfo &);
+
     /*
      * Ros callback function for the image
      */
@@ -163,12 +163,24 @@ public:
      */
     void cameraInfoLeftCallback(const sensor_msgs::CameraInfoConstPtr &);
 
-    void arParamUpdate(ARHandle* handle, ARParam *param);
+    /**
+    * When Roi or scale has changed the camera parameters have to be updated
+    */
+    void updateCameraInfo(const sensor_msgs::CameraInfo &);
+    /**
+     * In case a new roi or scale is set, the parameters of the ar toolkit have to be updated
+     * @param handle
+     * @param param
+     */
+    void updateArParam(ARHandle *handle, ARParam *param);
     /**
      * Initializes ARToolkit parameters
      */
     void ARInit();
-
+    /**
+     * The main loop of the algorithm
+     *
+     */
     void mainLoop();
 
 };

@@ -144,7 +144,7 @@ ARTracker::~ARTracker(){
     deleteMarkers(&_ar_markers_square, &_markers_square_count, _ar_patt_handle);
 }
 
-void ARTracker::arParamUpdate(ARHandle *handle,ARParam *param) {
+void ARTracker::updateArParam(ARHandle *handle, ARParam *param) {
     if(arPattDetach(_ar_handle)<0) ROS_ERROR("arPattDetach: no success");
     if(arDeleteHandle(_ar_handle)<0) ROS_ERROR("arDeleteHandle: no success");
     if(ar3DDeleteHandle(&gAR3DHandleL)<0)ROS_ERROR("ar3DDeleteHandle: no success");
@@ -327,7 +327,7 @@ void ARTracker::updateCameraInfo(const sensor_msgs::CameraInfo &cam_info){
         ROS_ERROR("Camera left: Distortion Parameters from ROS MSG mismatch ARToolkit Model");
     }
     //update ar_detection parameters
-    arParamUpdate(_ar_handle,&_ar_cam_param);
+    updateArParam(_ar_handle, &_ar_cam_param);
     //set the state again true
     _cam_info_up_to_date=true;
 }
