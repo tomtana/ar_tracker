@@ -7,7 +7,7 @@
 # $(camera)/image_raw 
 # $(camera)/camera_info
 #
-camera: "/left"
+camera: "/pylon_camera_left_node"
 ##
 # 
 #	shows a window with the current roi of the marker
@@ -114,11 +114,11 @@ roi_wait_reset: 0
 ##
 # Standart roi height
 ##
-roi_height: 70
+roi_height: 25
 ##
 # Standart roi width
 ##
-roi_width: 70
+roi_width: 25
 ##
 # Predict roi by using gradient
 #
