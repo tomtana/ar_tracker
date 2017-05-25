@@ -7,7 +7,7 @@ The rospackage ar_tracker is a realtime fiducial marker tracker based on ARToolk
 What is this package for?
 - Reliably tracking a single fiducial maker
 - very high framerates: tested on an 2048x1080 image with 35fps at 10% CPU usage
-- being suitable for outdoor environments with changing illumination conditions due to the adaptive thresholding of ART5
+- suitable for outdoor environments with changing illumination conditions due to the adaptive thresholding of ART5
 - detecting multiple markers and selecting one out of them for high speed tracking
 
 How is this achieved?
@@ -17,7 +17,7 @@ How is this achieved?
 
 ## Installation
 
->- Clone project 
+- Clone project 
 - download ARToolkit 5: https://github.com/artoolkit/artoolkit5
 - compile ARToolkit 5 by following the instructions
 - create a folder "ARToolkit" in the package root
