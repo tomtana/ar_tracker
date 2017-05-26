@@ -67,6 +67,13 @@ ARTracker::ARTracker(ros::NodeHandle & nh):
     ROS_INFO("predict_roi: \t\t\t%d",_predict_roi);
     ROS_INFO("predict_roi_dt: \t\t%.2f",_predict_roi_dt);
 
+    //check if marker file exists
+    if (FILE *file = fopen(_ar_marker_config_data_filename.c_str(), "r")) {
+        fclose(file);
+    } else {
+        ROS_ERROR("Marker file doesnt exist: %s", _ar_marker_config_data_filename.c_str());
+        exit(-1);
+    }
 
 }
 
@@ -111,6 +118,10 @@ void ARTracker::ARInit(){
 
     /// Load marker(s).
     newMarkers(_ar_marker_config_data_filename.c_str(), _ar_patt_handle, &_ar_markers_square, &_markers_square_count, &gARPattDetectionMode);
+    if(_markers_square_count==0){
+        ROS_ERROR("No markers found in config file %s", _ar_marker_config_data_filename.c_str());
+        exit(-1);
+    }
     ROS_INFO_ONCE("Marker count = %d\n", _markers_square_count);
 
     ///Configure detection
@@ -354,14 +365,14 @@ void ARTracker::mainLoop(void)
 
 
         //check if new image was received and reset the variable to false
-        if(!_img_received && !_capture_left->image.empty()){
-            ROS_DEBUG("Waiting for image..");
+        if(!_img_received ){
+            ROS_INFO_THROTTLE(1,"Waiting for image..");
             return;
         }else{
             _img_received=false;
         }
         //convert from opencv
-        ROS_DEBUG("Starting detection");
+        ROS_INFO_ONCE("Starting detection");
 
         //If Roi, then extraxct it from the image
         if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
@@ -477,7 +488,7 @@ void ARTracker::mainLoop(void)
                     ROSquat.setValue(ARquat[0],ARquat[1],ARquat[2],ARquat[3]);
                     tf.setOrigin(tf::Vector3(ARpos[0]*UnitAR2ROS,ARpos[1]*UnitAR2ROS,ARpos[2]*UnitAR2ROS));
                     tf.setRotation(ROSquat);
-                    _tf_br.sendTransform(tf::StampedTransform(tf, _capture_time_left, "pylon_camera_left_node" ,frame_id));
+                    _tf_br.sendTransform(tf::StampedTransform(tf, _capture_time_left, _cam_info.header.frame_id ,frame_id));
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[0][0],_ar_markers_square[i].trans[0][1], _ar_markers_square[i].trans[0][2],_ar_markers_square[i].trans[0][3] );
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[1][0],_ar_markers_square[i].trans[1][1], _ar_markers_square[i].trans[1][2],_ar_markers_square[i].trans[1][3] );
                     //ROS_INFO("%f  %f  %f  %f", _ar_markers_square[i].trans[2][0],_ar_markers_square[i].trans[2][1], _ar_markers_square[i].trans[2][2],_ar_markers_square[i].trans[2][3] );

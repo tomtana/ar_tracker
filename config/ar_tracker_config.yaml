@@ -23,7 +23,7 @@ show_image_window: true
 ##
 #	give the path to the ar toolkit marker config file
 #
-marker_file: "/home/tman/ros_ws/src/ar_tracker/Data/markers.datt"
+marker_file: "/home/tman/ros_ws/src/ar_tracker/Data/markers.dat"
 ##
 #	decide if and which tracking ar toolkit uses:
 #
@@ -82,7 +82,7 @@ marker_to_track: 0
 # default scale: here you can specify a scaling factor of the image. 
 # It is applied to the input. The value has to be 0<value<=1.
 ##
-scale_default: 1
+scale_default: 0.6
 ##
 # Maximum marker size in pixels:
 # if the marker size in the image is bigger than this value,
