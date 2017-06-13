@@ -75,9 +75,9 @@ ar_thresh: 100
 ##
 # This parameter indicates the marker number which the algorithm will
 # track once it is found. This value corresponds to the id in the
-# marker config file. [0,..,n]
+# marker config file. [0,..,n-1]
 #
-marker_to_track: 0
+marker_to_track: 2
 ##
 # default scale: here you can specify a scaling factor of the image. 
 # It is applied to the input. The value has to be 0<value<=1.

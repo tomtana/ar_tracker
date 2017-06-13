@@ -47,7 +47,7 @@ private:
     
     /// ROS
     ros::NodeHandle _nh; ///node handle
-    static const float UnitAR2ROS= 0.001;
+    const float UnitAR2ROS= 0.001;
     image_transport::ImageTransport _it;
     image_transport::Publisher _pub;
     image_transport::Subscriber _sub_il;
@@ -59,6 +59,7 @@ private:
     sensor_msgs::CameraInfo _cam_info;
     image_geometry::PinholeCameraModel _cam_model;
     cv_bridge::CvImagePtr _capture_left;
+    cv::Mat image_full_res;
     ros::Time _capture_time_left;
     bool _init=false;
     tf::TransformBroadcaster _tf_br;
@@ -144,6 +145,8 @@ private:
     //Camera Parameter
     ARParamLT *gCparamLTL = NULL;
 
+    cv::Mat _img_full;
+
 public:
     
     
@@ -152,6 +155,7 @@ public:
     
     ~ARTracker();
 
+    void extractSample(tf::Transform &cam2marker);
 
     /*
      * Ros callback function for the image
