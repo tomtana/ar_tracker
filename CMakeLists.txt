@@ -38,7 +38,8 @@ add_executable(
         src/ar_tracker.cpp
         src/ARTracker.cpp
         src/ARMarkerSquare.c
-        src/RoiTracker.cpp)
+        src/RoiTracker.cpp
+        src/SampleExtractor.cpp)
 
 target_link_libraries(
         ar_tracker_node

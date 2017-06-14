@@ -27,6 +27,7 @@
 
 //Own Classes
 #include <RoiTracker.h>
+#include "SampleExtractor.h"
 
 //ARToolkit includes
 extern "C" 
@@ -66,6 +67,7 @@ private:
 
     ///Own Classes
     RoiTracker _roi_tracker;
+    SampleExtractor _sample_extr;
 
     ///ARtoolkit
     //structure holding parameter

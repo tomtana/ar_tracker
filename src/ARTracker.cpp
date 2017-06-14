@@ -150,6 +150,13 @@ void ARTracker::ARInit(){
     //arSetBorderSize(gARHandleR, 0.25f); // Default = 0.25f
     //arSetMatrixCodeType(_ar_handle, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
     //arSetMatrixCodeType(gARHandleR, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
+
+    float x_off=0.44; //x offsetz to the origin of the pallet frame
+    float y_off=0.69; // y offset to the origin of the pallet frame
+    std::string path="/home/tman/ros_ws/image_samples";
+    _sample_extr = SampleExtractor(cv::Size(160,32),path,tf::Vector3(x_off,y_off,0.0),_cam_info);
+
+
 }
 
 ARTracker::~ARTracker(){
