@@ -23,12 +23,12 @@ FILTER 5.0
 furbot_mirror_web.patt
 SINGLE
 200
-FILTER 5.0
+#FILTER 5.0
 
 furbot_web.patt
 SINGLE
 200
-FILTER 5.0
+#FILTER 5.0
 
 
 #kanji.patt
