@@ -1,5 +1,11 @@
 #include <ARTracker.h>
 #include <opencv2/highgui/highgui.hpp>
+#include <boost/filesystem.hpp>
+#include <regex>
+#include <cursesf.h>
+
+namespace fs = ::boost::filesystem;
+
 
 ARTracker::ARTracker(ros::NodeHandle & nh):
         _nh(nh),
@@ -604,17 +610,61 @@ void ARTracker::extractSample(tf::Transform &cam2marker) {
     info.roi.height=0;
     model.fromCameraInfo(info);
 
-    float x_off=0.45; //x offsetz to the origin of the pallet frame
-    float y_off=0.66; // y offset to the origin of the pallet frame
+    float x_off=0.44; //x offsetz to the origin of the pallet frame
+    float y_off=0.69; // y offset to the origin of the pallet frame
     float object_width=0.9;
     float object_height=0.1;
     int boarder_x=10;
-    int boarder_y=0;
+    int boarder_y=5;
     static long cnt=0;
     cv::Mat img;
-    cv::Size obj_size_scaled(256,80); //the roi will be scaled that it fits the width and the area will be increased that it fits the height
-    std::string dir="/home/tman/ros_ws/image_samples/";
+    cv::Size obj_size_scaled(160,32); //the roi will be scaled that it fits the width and the area will be increased that it fits the height
+    std::string dir_pos="/home/tman/ros_ws/image_samples/pos/";
+    std::string dir_neg="/home/tman/ros_ws/image_samples/neg/";
     std::string file="images.txt";
+
+    static bool is_open=false;
+
+    //open directory search for all files with *.jpg extension, sort them and find the highest number
+    if(!is_open){
+        fs::path root(dir_pos);
+        std::vector<fs::path> ret;
+
+        if(!fs::exists(root) || !fs::is_directory(root)) {
+            ROS_ERROR("Dir doesnt exist");
+            exit(1);
+        }
+
+        fs::recursive_directory_iterator it(root);
+        fs::recursive_directory_iterator endit;
+
+        while(it != endit)
+        {
+            if(fs::is_regular_file(*it) && it->path().extension() == ".jpg") ret.push_back(it->path().filename());
+            ++it;
+
+        }
+        std::sort(ret.begin(),ret.end(), [&ret] (fs::path & one, fs::path & two){
+            return one.string()< two.string();
+        } );
+
+        std::string last =ret.back().string();
+        std::regex r("[1-9][[:digit:]]+");
+        std::smatch match;
+
+        //check if number was matched and set the cnt variable accoringly
+        if(std::regex_search(last,match,r)){
+            cnt=std::stoi(match.str())+1;
+            ROS_INFO("Highest number of image name: %s",match.str().c_str());
+            ROS_INFO("Starting naming at: %u", cnt);
+
+        }
+
+
+
+        is_open=true;
+    }
+
 
     if(true){
         pallet_left.setOrigin(tf::Vector3(y_off,-x_off,0)); //notice here the x and y values are exchanged because of this bug
@@ -653,8 +703,8 @@ void ARTracker::extractSample(tf::Transform &cam2marker) {
     std::vector<cv::Point> pts {bl,br,ul,ur};
     cv::Rect obj_rect=cv::boundingRect(pts);
 
-    ROS_INFO("Bounding Rect:");
-    ROS_INFO_STREAM(obj_rect);
+    ROS_DEBUG("Bounding Rect:");
+    ROS_DEBUG_STREAM(obj_rect);
     //ROS_INFO("Points:");
     //ROS_INFO_STREAM(std::cout<<"bl: "<<bl<<"ul: "<<ul<<"br: "<<br<<"ur: "<<ur<<std::endl);
 
@@ -677,11 +727,11 @@ void ARTracker::extractSample(tf::Transform &cam2marker) {
         return;
     }
 
-    ROS_INFO("Scale: \t %.2f",scale);
+    ROS_DEBUG("Scale: \t %.2f",scale);
     //resize roi
     cv::Rect obj_rect_scaled = cv::Rect((int)round(obj_rect.x*scale),(int)round(obj_rect.y*scale),(int)round(obj_rect.width*scale),(int)round(obj_rect.height*scale));
-    ROS_INFO("Bounding Rect scaled:");
-    ROS_INFO_STREAM(obj_rect_scaled);
+    ROS_DEBUG("Bounding Rect scaled:");
+    ROS_DEBUG_STREAM(obj_rect_scaled);
 
     //check if the height is smaller the required size
     if(obj_rect_scaled.height>obj_size_scaled.height){
@@ -705,22 +755,37 @@ void ARTracker::extractSample(tf::Transform &cam2marker) {
     //now resize image
     cv::resize(_img_full,img,cv::Size(0,0),scale,scale,cv::INTER_AREA);
 
+    //generate negative sample
+    int x_ran=0;
+    int y_ran=0;
+    do{
+        x_ran = std::rand() % (img.cols-obj_rect_scaled.width);
+        y_ran = std::rand() % (img.rows-obj_rect_scaled.height);
+    }
+    while(obj_rect_scaled.contains(cv::Point(x_ran,y_ran))
+          ||    obj_rect_scaled.contains(cv::Point(x_ran+obj_rect_scaled.width,y_ran+obj_rect_scaled.height))
+          ||    obj_rect_scaled.contains(cv::Point(x_ran,y_ran+obj_rect_scaled.height))
+          ||    obj_rect_scaled.contains(cv::Point(x_ran+obj_rect_scaled.width,y_ran)));
+    cv::Rect obj_neg_rect_scaled=cv::Rect(x_ran,y_ran,obj_rect_scaled.width,obj_rect_scaled.height);
     //get roi
-    cv::Mat out = img(obj_rect_scaled);
+    cv::Mat out_pos = img(obj_rect_scaled);
+    cv::Mat out_neg = img(obj_neg_rect_scaled);
 
     //final check if dimensions are right
-    if(out.cols!= obj_size_scaled.width || out.rows != obj_size_scaled.height){
+    if(out_pos.cols!= obj_size_scaled.width || out_pos.rows != obj_size_scaled.height){
         ROS_ERROR("THERE MUST BE SOME ERROR IN THE PROGRAMM !!!");
         ROS_INFO("Out size:");
-        ROS_INFO_STREAM(out.size);
+        ROS_INFO_STREAM(out_pos.size);
         exit(1);
     }
 
     std::string img_name;
     char img_name_c[10];
     std::sprintf(img_name_c,"%.7u",cnt);
-    cv::imshow("ROI of pallet_left", out);
-    cv::imwrite(dir+img_name_c+".jpg",out);
+    cv::imshow("ROI of pallet_left", out_pos);
+    cv::imshow("ROI of negative sample",out_neg);
+    cv::imwrite(dir_pos+img_name_c+".jpg",out_pos);
+    cv::imwrite(dir_neg+img_name_c+".jpg",out_neg);
     cv::waitKey(10);
     cnt++;
 }
