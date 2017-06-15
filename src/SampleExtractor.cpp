@@ -141,10 +141,10 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     obj_left_u = (_cam2marker*obj_left_u);
     obj_right_b = (_cam2marker*obj_right_b);
     obj_right_u = (_cam2marker*obj_right_u);
-    ROS_INFO("BL: [%.2f,\t%.2f,\t%.2f]", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
-    ROS_INFO("UL: [%.2f,\t%.2f,\t%.2f]", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
-    ROS_INFO("BR: [%.2f,\t%.2f,\t%.2f]", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
-    ROS_INFO("UR: [%.2f,\t%.2f,\t%.2f]", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
+    //ROS_INFO("BL: [%.2f,\t%.2f,\t%.2f]", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
+    //ROS_INFO("UL: [%.2f,\t%.2f,\t%.2f]", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
+    //ROS_INFO("BR: [%.2f,\t%.2f,\t%.2f]", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
+    //ROS_INFO("UR: [%.2f,\t%.2f,\t%.2f]", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
 
     double y,p,r;
     _cam2marker.getBasis().getEulerYPR(y,p,r);

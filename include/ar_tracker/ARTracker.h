@@ -157,8 +157,6 @@ public:
     
     ~ARTracker();
 
-    void extractSample(tf::Transform &cam2marker);
-
     /*
      * Ros callback function for the image
      */
