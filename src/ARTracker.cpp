@@ -160,11 +160,14 @@ void ARTracker::ARInit(){
     //
     float x_off=0.44; //x offsetz to the origin of the pallet frame
     float y_off=0.69; // y offset to the origin of the pallet frame
+
+    ///ATTENTION watch out gimble lock!!!! DO NOT USE FUNCTION SETRPY FUCK !!!!!!
     tf::Transform marker2obj;
     marker2obj.setOrigin(tf::Vector3(y_off,-x_off,0));
-    marker2obj.setRotation(tf::createQuaternionFromRPY(0,0,-90/180*CV_PI));
+    tf::Matrix3x3 rot(0,1,0,1,0,0,0,0,1);
+    marker2obj.setBasis(rot);
     std::string path="/home/tman/ros_ws/image_samples";
-    _sample_extr = SampleExtractor(cv::Size(160,32),path,marker2obj,_cam_info);
+    _sample_extr = SampleExtractor(cv::Size(160,32),cv::Size2d(0.9,0.14),cv::Size2d(10,10),path,marker2obj,_cam_info);
 
 
 }

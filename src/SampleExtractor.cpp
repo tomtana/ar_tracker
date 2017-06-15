@@ -13,18 +13,21 @@ SampleExtractor::SampleExtractor() {
 
 }
 
-SampleExtractor::SampleExtractor(cv::Size2d obj_size, std::string path_root, tf::Transform marker2obj,
+SampleExtractor::SampleExtractor(cv::Size rect_size,cv::Size2d obj_size, cv::Size2d boarder_size_percent, std::string path_root, tf::Transform marker2obj,
                                  sensor_msgs::CameraInfo cam_info) {
     _cam_model.fromCameraInfo(cam_info);
 
-    if(_path_root.back()!='/'){
-        _path_root.append("/");
+    if(path_root.back()!='/'){
+        path_root.append("/");
+        ROS_DEBUG("SampleExtractor: Path corrected to : %s", path_root.c_str());
     }
     _path_root=path_root;
-    _obj_size=obj_size;
+    _rect_size=rect_size;
     _marker2obj=marker2obj;
+    _boarder_size_percent=boarder_size_percent;
     _cnt_neg=0;
     _cnt_pos=0;
+    _obj_size=obj_size;
 }
 
 bool SampleExtractor::update(tf::Transform cam_marker, cv::Mat img, bool rectify, bool verifyRectSize) {
@@ -73,7 +76,7 @@ bool SampleExtractor::openDir(std::string path, std::vector<fs::path> & file_lis
     std::vector<fs::path> ret;
 
     if(!fs::exists(root) || !fs::is_directory(root)) {
-        ROS_ERROR("Dir doesnt exist");
+        ROS_ERROR("Dir doesnt exist: %s", root.string().c_str());
         return false;
     }
 
@@ -107,8 +110,8 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
 
     double object_width=_obj_size.width;
     double object_height=_obj_size.height;
-    double boarder_percent_x=10;
-    double boarder_percent_y=5;
+    double boarder_percent_x=_boarder_size_percent.width;
+    double boarder_percent_y=_boarder_size_percent.height;
 
 
 
@@ -121,23 +124,32 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     obj_right_b.getOrigin().setX(obj_right_b.getOrigin().x()+object_width);
     ///set up right
     obj_right_u=obj_right_b;
-    obj_right_u.getOrigin().setY(obj_right_b.getOrigin().y()+object_height);
+    obj_right_u.getOrigin().setY(obj_right_u.getOrigin().y()+object_height);
+
+
+    //ROS_INFO("Transmat:\n %f %f %f\n %f %f %f\n %f %f %f\n",_marker2obj.getBasis().getRow(0).x(),_marker2obj.getBasis().getRow(0).y(),_marker2obj.getBasis().getRow(0).z(),_marker2obj.getBasis().getRow(1).x(),
+    //        _marker2obj.getBasis().getRow(1).y(),_marker2obj.getBasis().getRow(1).z(),_marker2obj.getBasis().getRow(2).x(),_marker2obj.getBasis().getRow(2).y(),_marker2obj.getBasis().getRow(2).z());
 
     //convert into camera frame
-    obj_left_b  = _cam2marker*_marker2obj*obj_left_b;
-    obj_left_u = _cam2marker*_marker2obj*obj_left_u;
-    obj_right_b = _cam2marker*_marker2obj*obj_right_b;
-    obj_right_u = _cam2marker*_marker2obj*obj_right_u;
+    obj_left_b.mult(_marker2obj,obj_left_b);
+    obj_left_u.mult(_marker2obj,obj_left_u);
+    obj_right_b.mult(_marker2obj,obj_right_b);
+    obj_right_u.mult(_marker2obj,obj_right_u);
 
-    ROS_INFO("BL: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
-    ROS_INFO("UL: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
-    ROS_INFO("BR: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
-    ROS_INFO("UR: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
-    //ROS_INFO("[Pallet Left XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z());
-    //ROS_INFO("[Pallet Right XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z());
+
+
+    obj_left_b  = (_cam2marker*obj_left_b);
+    obj_left_u = (_cam2marker*obj_left_u);
+    obj_right_b = (_cam2marker*obj_right_b);
+    obj_right_u = (_cam2marker*obj_right_u);
+    // ROS_INFO("BL: [%.2f,\t%.2f,\t%.2f]\\n", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
+    // ROS_INFO("UL: [%.2f,\t%.2f,\t%.2f]\\n", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
+    // ROS_INFO("BR: [%.2f,\t%.2f,\t%.2f]\\n", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
+    // ROS_INFO("UR: [%.2f,\t%.2f,\t%.2f]\\n", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
+
     double y,p,r;
     _cam2marker.getBasis().getEulerYPR(y,p,r);
-    //ROS_INFO("Rot: [yaw,pitch,roll] = [%.2f,\t%.2f,\t%.2f]",y,p,r);
+    ROS_INFO("Rot: [yaw z, pitch y, roll x] = [%.2f,\t%.2f,\t%.2f]",y,p,r);
 
     //compute corner points of roi
     cv::Point bl=_cam_model.project3dToPixel(cv::Point3d(obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z()));
@@ -158,14 +170,14 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     obj_rect.y -= border_frame_y;
     obj_rect.height += 2* border_frame_y;
 
-    ROS_DEBUG("Bounding Rect:");
-    ROS_DEBUG_STREAM(obj_rect);
+    ROS_INFO("Bounding Rect:");
+    ROS_INFO_STREAM(obj_rect);
 
     //check if points lie in the image
-    bb=cv::Rect(cv::Point(), _cam_model.fullResolution());
+    cv::Rect rect_full=cv::Rect(cv::Point(), _cam_model.fullResolution());
 
     //if object not in image return
-    if(!(bb.contains(bl) && bb.contains(ul) && bb.contains(br)  && bb.contains(ur))){
+    if(!(rect_full.contains(bb.br()) && rect_full.contains(bb.tl()) )){
         ROS_ERROR("Object lies outside image");
         return false;
     }
@@ -178,10 +190,14 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
 bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bool validateSize) {
     //determine required scale
     double s=1;
-    if(bb.width>_obj_size.width){
-        s=(float)_obj_size.width/(float)(bb.width);
+    if(bb.width>_rect_size.width){
+        s=(float)_rect_size.width/(float)(bb.width);
     }else{
         ROS_ERROR("Image smaller than chosen scale");
+        ROS_INFO("Bounding Rect");
+        ROS_INFO_STREAM(bb);
+        ROS_INFO("ROI Size");
+        ROS_INFO_STREAM(_rect_size);
         return false;
     }
 
@@ -190,12 +206,14 @@ bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bo
     ROS_DEBUG("Scale: \t %.2f",scale);
     //resize roi
     bb_scaled = cv::Rect((int)round(bb.x*scale),(int)round(bb.y*scale),(int)round(bb.width*scale),(int)round(bb.height*scale));
-    ROS_DEBUG("Bounding Rect scaled:");
-    ROS_DEBUG_STREAM(bb_scaled);
+    ROS_INFO("Bounding Rect scaled:");
+    ROS_INFO_STREAM(bb_scaled);
+    ROS_INFO("Bounding Rect:");
+    ROS_INFO_STREAM(bb);
 
     //check if the height is smaller the required size
-    if(bb_scaled.height>_obj_size.height){
-        bb_scaled.height=_obj_size.height;
+    if(bb_scaled.height>_rect_size.height){
+        bb_scaled.height=_rect_size.height;
         if(validateSize){
             ROS_ERROR("After scaling image doesnt fit the roi..");
             ROS_ERROR("Cutting the rest..");
@@ -208,7 +226,7 @@ bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bo
     }
 
     //resize rectancle to a precise height of the scaled object size
-    int y_corr=_obj_size.height-bb_scaled.height;
+    int y_corr=_rect_size.height-bb_scaled.height;
     if(y_corr>0){
         //check if rect would fit image
         if((bb_scaled.y+bb_scaled.height+y_corr)>round(_cam_model.fullResolution().height*scale)){

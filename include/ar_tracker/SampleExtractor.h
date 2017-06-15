@@ -19,8 +19,8 @@ class SampleExtractor {
 
 public:
     SampleExtractor();
-    SampleExtractor(cv::Size2d obj_size, std::string path_root, tf::Transform marker2obj,
-                        sensor_msgs::CameraInfo cam_info);
+    SampleExtractor(cv::Size rect_size,cv::Size2d obj_size,cv::Size2d boarder_size_percent, std::string path_root, tf::Transform marker2obj,
+                    sensor_msgs::CameraInfo cam_info);
     bool update(tf::Transform cam_marker, cv::Mat img, bool rectify=false, bool verifyRectSize=false);
 
     void extractPositivePatch(std::string path,std::string file_type=".jpg", bool overwrite =false);
@@ -33,6 +33,8 @@ private:
     bool _init=false;
     tf::Transform _marker2obj;
     tf::Transform _cam2marker;
+    cv::Size _rect_size;
+    cv::Size2d _boarder_size_percent;
     cv::Size2d _obj_size;
     cv::Mat _img;
     cv::Rect _bb;
