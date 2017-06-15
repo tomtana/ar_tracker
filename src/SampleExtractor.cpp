@@ -13,7 +13,7 @@ SampleExtractor::SampleExtractor() {
 
 }
 
-SampleExtractor::SampleExtractor(cv::Size2d obj_size, std::string path_root, tf::Vector3 off_mar_obj,
+SampleExtractor::SampleExtractor(cv::Size2d obj_size, std::string path_root, tf::Transform marker2obj,
                                  sensor_msgs::CameraInfo cam_info) {
     _cam_model.fromCameraInfo(cam_info);
 
@@ -22,7 +22,7 @@ SampleExtractor::SampleExtractor(cv::Size2d obj_size, std::string path_root, tf:
     }
     _path_root=path_root;
     _obj_size=obj_size;
-    _off_mar_obj=off_mar_obj;
+    _marker2obj=marker2obj;
     _cnt_neg=0;
     _cnt_pos=0;
 }
@@ -35,7 +35,7 @@ bool SampleExtractor::update(tf::Transform cam_marker, cv::Mat img, bool rectify
         return false;
     }
 
-    _cam_marker=cam_marker;
+    _cam2marker=cam_marker;
 
     if (rectify){
         _cam_model.rectifyImage(img,_img);
@@ -86,7 +86,7 @@ bool SampleExtractor::openDir(std::string path, std::vector<fs::path> & file_lis
         ++it;
 
     }
-    std::sort(ret.begin(),ret.end(), [&ret] (fs::path & one, fs::path & two){
+    std::sort(ret.begin(),ret.end(), [] (fs::path & one, fs::path & two){
         return one.string()< two.string();
     } );
 
@@ -98,52 +98,65 @@ bool SampleExtractor::openDir(std::string path, std::vector<fs::path> & file_lis
 
 bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     //set the object boundaries
-    tf::Transform obj_left;
-    tf::Transform obj_right;
-    obj_left.setIdentity();
-    obj_right.setIdentity();
+    tf::Transform obj_left_b;
+    tf::Transform obj_left_u;
+    tf::Transform obj_right_b;
+    tf::Transform obj_right_u;
+    obj_left_b.setIdentity();
+    obj_right_b.setIdentity();
 
-    double x_off=_off_mar_obj.x(); //x offsetz to the origin of the pallet frame
-    double y_off=_off_mar_obj.y(); // y offset to the origin of the pallet frame
-    double z_off=_off_mar_obj.z();
     double object_width=_obj_size.width;
     double object_height=_obj_size.height;
-    int boarder_x=10;
-    int boarder_y=5;
+    double boarder_percent_x=10;
+    double boarder_percent_y=5;
 
 
 
-    obj_left.setOrigin(tf::Vector3(y_off,-x_off,0)); //notice here the x and y values are exchanged because of this bug
-    obj_right=obj_left;
-    tf::Vector3 orig_right=obj_right.getOrigin();
-    orig_right.setY(orig_right.y()+ object_width);
-    obj_right.setOrigin(orig_right);
-    obj_left  = _cam_marker*obj_left;
-    obj_right = _cam_marker*obj_right;
+    obj_left_b.setOrigin(tf::Vector3(0,0,0)); //origin of object is bottom left point
+    ///set up left point
+    obj_left_u=obj_left_b;
+    obj_left_u.getOrigin().setY(obj_left_u.getOrigin().y()+object_height);
+    ///set bottom right
+    obj_right_b=obj_left_b;
+    obj_right_b.getOrigin().setX(obj_right_b.getOrigin().x()+object_width);
+    ///set up right
+    obj_right_u=obj_right_b;
+    obj_right_u.getOrigin().setY(obj_right_b.getOrigin().y()+object_height);
 
-    //ROS_INFO("[Pallet Left XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_left.getOrigin().x(),obj_left.getOrigin().y(),obj_left.getOrigin().z());
-    //ROS_INFO("[Pallet Right XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_right.getOrigin().x(),obj_right.getOrigin().y(),obj_right.getOrigin().z());
+    //convert into camera frame
+    obj_left_b  = _cam2marker*_marker2obj*obj_left_b;
+    obj_left_u = _cam2marker*_marker2obj*obj_left_u;
+    obj_right_b = _cam2marker*_marker2obj*obj_right_b;
+    obj_right_u = _cam2marker*_marker2obj*obj_right_u;
+
+    ROS_INFO("BL: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
+    ROS_INFO("UL: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
+    ROS_INFO("BR: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
+    ROS_INFO("UR: [%.2f,\\t%.2f,\\t%.2f]\\n", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
+    //ROS_INFO("[Pallet Left XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z());
+    //ROS_INFO("[Pallet Right XYZ: [%.2f,\t%.2f,\t%.2f]\n",obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z());
     double y,p,r;
-    _cam_marker.getBasis().getEulerYPR(y,p,r);
+    _cam2marker.getBasis().getEulerYPR(y,p,r);
     //ROS_INFO("Rot: [yaw,pitch,roll] = [%.2f,\t%.2f,\t%.2f]",y,p,r);
 
     //compute corner points of roi
-    cv::Point bl=_cam_model.project3dToPixel(cv::Point3d(obj_left.getOrigin().x(),obj_left.getOrigin().y(),obj_left.getOrigin().z()+_off_mar_obj.z()));
-    cv::Point ul=_cam_model.project3dToPixel(cv::Point3d(obj_left.getOrigin().x(),obj_left.getOrigin().y()-object_height,obj_left.getOrigin().z()+_off_mar_obj.z()));
+    cv::Point bl=_cam_model.project3dToPixel(cv::Point3d(obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z()));
+    cv::Point ul=_cam_model.project3dToPixel(cv::Point3d(obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z()));
 
-    cv::Point br=_cam_model.project3dToPixel(cv::Point3d(obj_right.getOrigin().x(),obj_right.getOrigin().y(),obj_right.getOrigin().z()+_off_mar_obj.z()));
-    cv::Point ur=_cam_model.project3dToPixel(cv::Point3d(obj_right.getOrigin().x(),obj_right.getOrigin().y()-object_height,obj_right.getOrigin().z()+_off_mar_obj.z()));
-
-
-    //add boarder to the points
-    bl += cv::Point(-boarder_x,boarder_y);
-    br += cv::Point(boarder_x,boarder_y);
-    ul += cv::Point(-boarder_x,-boarder_y);
-    ur += cv::Point(boarder_x,-boarder_y);
+    cv::Point br=_cam_model.project3dToPixel(cv::Point3d(obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z()));
+    cv::Point ur=_cam_model.project3dToPixel(cv::Point3d(obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z()));
 
     //get bounding box of object
     std::vector<cv::Point> pts {bl,br,ul,ur};
     cv::Rect obj_rect=cv::boundingRect(pts);
+
+    //compute boarder
+    int border_frame_x= (int)round((obj_rect.width*boarder_percent_x/100)/2);
+    int border_frame_y= (int)round((obj_rect.height*boarder_percent_y/100)/2);
+    obj_rect.x -= border_frame_x;
+    obj_rect.width += 2*border_frame_x;
+    obj_rect.y -= border_frame_y;
+    obj_rect.height += 2* border_frame_y;
 
     ROS_DEBUG("Bounding Rect:");
     ROS_DEBUG_STREAM(obj_rect);

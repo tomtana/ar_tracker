@@ -151,10 +151,20 @@ void ARTracker::ARInit(){
     //arSetMatrixCodeType(_ar_handle, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
     //arSetMatrixCodeType(gARHandleR, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
 
+    //      Marker frame                Obj Frame
+    //         y
+    //      ----------->               ^
+    //      |                        y |
+    //      | x                        |     x
+    //      v                          ----------->
+    //
     float x_off=0.44; //x offsetz to the origin of the pallet frame
     float y_off=0.69; // y offset to the origin of the pallet frame
+    tf::Transform marker2obj;
+    marker2obj.setOrigin(tf::Vector3(y_off,-x_off,0));
+    marker2obj.setRotation(tf::createQuaternionFromRPY(0,0,-90/180*CV_PI));
     std::string path="/home/tman/ros_ws/image_samples";
-    _sample_extr = SampleExtractor(cv::Size(160,32),path,tf::Vector3(x_off,y_off,0.0),_cam_info);
+    _sample_extr = SampleExtractor(cv::Size(160,32),path,marker2obj,_cam_info);
 
 
 }
@@ -380,6 +390,7 @@ void ARTracker::mainLoop(void)
     static ros::Time time_prev;
     ros::Duration time_elapsed;
     float framerate=0;
+    cv::Mat image;
 
 
 
@@ -394,38 +405,40 @@ void ARTracker::mainLoop(void)
     ROS_INFO_ONCE("Starting detection");
 
 
-    //copy original image
-    _img_full=_capture_left->image.clone();
+
 
     //If Roi, then extraxct it from the image
     if(_cam_info.roi.height>0 && _cam_info.roi.width>0){
-        _capture_left->image=_capture_left->image(_cam_model.rawRoi()).clone();
+        image=_capture_left->image(_cam_model.rawRoi()).clone();
         ROS_DEBUG("Mat Size Roi: [%d,%d]",_capture_left->image.rows ,_capture_left->image.cols);
+    }else{
+        //copy original image
+        image=_capture_left->image.clone();
     }
     //scale image
     if(_image_scale<1){
         //resize image
         cv::Size size_new(_ar_cam_param.xsize,_ar_cam_param.ysize);
-        cv::resize(_capture_left->image,_capture_left->image,size_new,cv::INTER_AREA);
+        cv::resize(image,image,size_new,cv::INTER_AREA);
         ROS_DEBUG("Mat Size after Scaling: [%d,%d]",size_new.height,size_new.width);
     }
-    //equalizeHist( _capture_left->image, _capture_left->image );
+    //equalizeHist( image, image );
 
-    //cv::GaussianBlur( _capture_left->image, _capture_left->image, cv::Size( 7,7 ), 0, 0 );
+    //cv::GaussianBlur( image, image, cv::Size( 7,7 ), 0, 0 );
     /*
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
     clahe->setClipLimit(2);
     clahe->setTilesGridSize(cv::Size(7,7));
-    clahe->apply(_capture_left->image,_capture_left->image);
+    clahe->apply(image,image);
      */
     if(_show_image_window) {
         cv::namedWindow("after preprocess", CV_WINDOW_AUTOSIZE);
-        cv::imshow("after preprocess", _capture_left->image);
+        cv::imshow("after preprocess", image);
         cv::waitKey(20);
     }
 
     //Cast CV image to ar toolkit image
-    ARUint8		*ar_image  = (ARUint8 *) ((IplImage) _capture_left->image).imageData;
+    ARUint8		*ar_image  = (ARUint8 *) ((IplImage) image).imageData;
     //update parameters
     if (ar_image) {
         _call_count_marker_detect++; // Increment ARToolKit FPS counter.
@@ -524,8 +537,9 @@ void ARTracker::mainLoop(void)
                 //if (_ar_markers_square[i].validPrev && i== _marker_to_track) {
                 if ( i== _marker_to_track) {
 
-                    extractSample(tf);
-
+                    //extractSample(tf);
+                    _sample_extr.update(tf,_capture_left->image,true,false);
+                    _sample_extr.extractPositivePatch("pos");
                     ///compute new scale
                     //get vertex and compute average length of pixel of the marker in the image
                     double x=_ar_markers_square[i].marker_height/1000.0;
