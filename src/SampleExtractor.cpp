@@ -64,8 +64,7 @@ bool SampleExtractor::update(tf::Transform cam_marker, cv::Mat img, bool rectify
     //now resize image
     cv::resize(_img,_img,cv::Size(0,0),scale,scale,cv::INTER_AREA);
 
-    _bb=bb;
-
+    _bb_scaled=bb_scaled;
     _init=true;
     return true;
 
@@ -142,14 +141,14 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     obj_left_u = (_cam2marker*obj_left_u);
     obj_right_b = (_cam2marker*obj_right_b);
     obj_right_u = (_cam2marker*obj_right_u);
-    // ROS_INFO("BL: [%.2f,\t%.2f,\t%.2f]\\n", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
-    // ROS_INFO("UL: [%.2f,\t%.2f,\t%.2f]\\n", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
-    // ROS_INFO("BR: [%.2f,\t%.2f,\t%.2f]\\n", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
-    // ROS_INFO("UR: [%.2f,\t%.2f,\t%.2f]\\n", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
+    ROS_INFO("BL: [%.2f,\t%.2f,\t%.2f]", obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z() );
+    ROS_INFO("UL: [%.2f,\t%.2f,\t%.2f]", obj_left_u.getOrigin().x(),obj_left_u.getOrigin().y(),obj_left_u.getOrigin().z() );
+    ROS_INFO("BR: [%.2f,\t%.2f,\t%.2f]", obj_right_b.getOrigin().x(),obj_right_b.getOrigin().y(),obj_right_b.getOrigin().z() );
+    ROS_INFO("UR: [%.2f,\t%.2f,\t%.2f]", obj_right_u.getOrigin().x(),obj_right_u.getOrigin().y(),obj_right_u.getOrigin().z() );
 
     double y,p,r;
     _cam2marker.getBasis().getEulerYPR(y,p,r);
-    ROS_INFO("Rot: [yaw z, pitch y, roll x] = [%.2f,\t%.2f,\t%.2f]",y,p,r);
+    //ROS_INFO("Rot: [yaw z, pitch y, roll x] = [%.2f,\t%.2f,\t%.2f]",y,p,r);
 
     //compute corner points of roi
     cv::Point bl=_cam_model.project3dToPixel(cv::Point3d(obj_left_b.getOrigin().x(),obj_left_b.getOrigin().y(),obj_left_b.getOrigin().z()));
@@ -177,17 +176,18 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     cv::Rect rect_full=cv::Rect(cv::Point(), _cam_model.fullResolution());
 
     //if object not in image return
-    if(!(rect_full.contains(bb.br()) && rect_full.contains(bb.tl()) )){
+    if(!(rect_full.contains(obj_rect.br()) && rect_full.contains(obj_rect.tl()) )){
         ROS_ERROR("Object lies outside image");
         return false;
     }
 
+    bb=obj_rect;
     return true;
 
 
 }
 
-bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bool validateSize) {
+bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect &bb_scaled, bool validateSize) {
     //determine required scale
     double s=1;
     if(bb.width>_rect_size.width){
@@ -206,10 +206,10 @@ bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bo
     ROS_DEBUG("Scale: \t %.2f",scale);
     //resize roi
     bb_scaled = cv::Rect((int)round(bb.x*scale),(int)round(bb.y*scale),(int)round(bb.width*scale),(int)round(bb.height*scale));
-    ROS_INFO("Bounding Rect scaled:");
-    ROS_INFO_STREAM(bb_scaled);
-    ROS_INFO("Bounding Rect:");
-    ROS_INFO_STREAM(bb);
+    ROS_DEBUG("Bounding Rect scaled:");
+    ROS_DEBUG_STREAM(bb_scaled);
+    ROS_DEBUG("Bounding Rect:");
+    ROS_DEBUG_STREAM(bb);
 
     //check if the height is smaller the required size
     if(bb_scaled.height>_rect_size.height){
@@ -244,7 +244,6 @@ bool SampleExtractor::getScale(cv::Rect bb, double &scale,cv::Rect bb_scaled, bo
         }
         bb_scaled.height+=y_corr;
     }
-
     return true;
 
 }
@@ -256,25 +255,25 @@ void SampleExtractor::extractPositivePatch(std::string path, std::string file_ty
         ROS_DEBUG("Not initialized!");
         return;
     }
+    if(path.at(0)=='/'){
+        path.erase(0,1);
+    };
+    if(path.back()!='/'){
+        path.append("/");
+    };
 
     if(!isOpen){
-        if(path.at(0)=='/'){
-            path.erase(0,1);
-        }
-        if(path.back()!='/'){
-            path.append("/");
-        }
+
+        ROS_INFO("Path: %s",path.c_str());
         std::vector<fs::path> file_list;
         if(!openDir(_path_root+path,file_list,file_type)){
             ROS_ERROR("Dir not valid!");
             exit(1);
         }
-
-        std::string last =file_list.back().string();
-        std::regex r("[1-9][[:digit:]]+");
-        std::smatch match;
-
-        if(!overwrite){
+        if(!file_list.empty()&& !overwrite){
+            std::string last =file_list.back().string();
+            std::regex r("[1-9][[:digit:]]+");
+            std::smatch match;
             //check if number was matched and set the cnt variable accoringly
             if(std::regex_search(last,match,r)){
                 _cnt_pos=std::stoi(match.str())+1;
@@ -282,12 +281,16 @@ void SampleExtractor::extractPositivePatch(std::string path, std::string file_ty
                 ROS_INFO("Starting naming at: %u", _cnt_pos);
 
             }
+
         }
+
 
         isOpen=true;
     }
 
-    cv::Mat out = _img(_bb);
+    cv::Mat out = _img(_bb_scaled);
+
+
 
     std::string img_name;
     char img_name_c[10];
@@ -302,37 +305,39 @@ void SampleExtractor::extractPositivePatch(std::string path, std::string file_ty
 void SampleExtractor::extractNegativePatch(std::string path, std::string file_type, bool overwrite) {
 
     static bool isOpen=false;
-
     if(!_init){
         ROS_DEBUG("Not initialized!");
         return;
     }
+    if(path.at(0)=='/'){
+        path.erase(0,1);
+    };
+    if(path.back()!='/'){
+        path.append("/");
+    };
+
     if(!isOpen){
-        if(path.at(0)=='/'){
-            path.erase(0,1);
-        }
-        if(path.back()!='/'){
-            path.append("/");
-        }
+
+        ROS_INFO("Path: %s",path.c_str());
         std::vector<fs::path> file_list;
         if(!openDir(_path_root+path,file_list,file_type)){
             ROS_ERROR("Dir not valid!");
             exit(1);
         }
-
-        std::string last =file_list.back().string();
-        std::regex r("[1-9][[:digit:]]+");
-        std::smatch match;
-
-        if(!overwrite){
+        if(!file_list.empty()&& !overwrite){
+            std::string last =file_list.back().string();
+            std::regex r("[1-9][[:digit:]]+");
+            std::smatch match;
             //check if number was matched and set the cnt variable accoringly
             if(std::regex_search(last,match,r)){
-                _cnt_neg=std::stoi(match.str())+1;
+                _cnt_pos=std::stoi(match.str())+1;
                 ROS_INFO("Highest number of image name: %s",match.str().c_str());
-                ROS_INFO("Starting naming at: %u", _cnt_neg);
+                ROS_INFO("Starting naming at: %u", _cnt_pos);
 
             }
+
         }
+
 
         isOpen=true;
     }
@@ -342,14 +347,14 @@ void SampleExtractor::extractNegativePatch(std::string path, std::string file_ty
     int x_ran=0;
     int y_ran=0;
     do{
-        x_ran = std::rand() % (_img.cols-_bb.width);
-        y_ran = std::rand() % (_img.rows-_bb.height);
+        x_ran = std::rand() % (_img.cols-_bb_scaled.width);
+        y_ran = std::rand() % (_img.rows-_bb_scaled.height);
     }
-    while(_bb.contains(cv::Point(x_ran,y_ran))
-          ||    _bb.contains(cv::Point(x_ran+_bb.width,y_ran+_bb.height))
-          ||    _bb.contains(cv::Point(x_ran,y_ran+_bb.height))
-          ||    _bb.contains(cv::Point(x_ran+_bb.width,y_ran)));
-    cv::Rect obj_neg_rect_scaled=cv::Rect(x_ran,y_ran,_bb.width,_bb.height);
+    while(_bb_scaled.contains(cv::Point(x_ran,y_ran))
+          ||    _bb_scaled.contains(cv::Point(x_ran+_bb_scaled.width,y_ran+_bb_scaled.height))
+          ||    _bb_scaled.contains(cv::Point(x_ran,y_ran+_bb_scaled.height))
+          ||    _bb_scaled.contains(cv::Point(x_ran+_bb_scaled.width,y_ran)));
+    cv::Rect obj_neg_rect_scaled=cv::Rect(x_ran,y_ran,_bb_scaled.width,_bb_scaled.height);
     //get roi
     cv::Mat out = _img(obj_neg_rect_scaled);
 

@@ -37,13 +37,13 @@ private:
     cv::Size2d _boarder_size_percent;
     cv::Size2d _obj_size;
     cv::Mat _img;
-    cv::Rect _bb;
+    cv::Rect _bb_scaled;
     image_geometry::PinholeCameraModel _cam_model;
     std::string _path_root;
     bool openDir(std::string path, std::vector<fs::path> & file_list, std::string file_format);
 
     bool getBoundingRect(cv::Rect & bb);
-    bool getScale(cv::Rect bb, double & scale, cv::Rect bb_scaled,bool validateSize);
+    bool getScale(cv::Rect bb, double & scale, cv::Rect& bb_scaled,bool validateSize);
 
 };
 
