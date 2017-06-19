@@ -140,16 +140,7 @@ void ARTracker::ARInit(){
     arSetDebugMode(_ar_handle,AR_DEBUG_DISABLE);
     arSetPatternDetectionMode(_ar_handle, ar_pattern_detection_mode);
 
-    // Other application-wide marker options. Once set, these apply to all markers in use in the application.
-    // If you are using standard ARToolKit picture (template) markers, leave commented to use the defaults.
-    // If you are usign a different marker design (see http://www.artoolworks.com/support/app/marker.php )
-    // then uncomment and edit as instructed by the marker design application.
-    //arSetLabelingMode(_ar_handle, AR_LABELING_BLACK_REGION); // Default = AR_LABELING_BLACK_REGION
-    //arSetLabelingMode(gARHandleR, AR_LABELING_BLACK_REGION); // Default = AR_LABELING_BLACK_REGION
-    //arSetBorderSize(_ar_handle, 0.25f); // Default = 0.25f
-    //arSetBorderSize(gARHandleR, 0.25f); // Default = 0.25f
-    //arSetMatrixCodeType(_ar_handle, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
-    //arSetMatrixCodeType(gARHandleR, AR_MATRIX_CODE_3x3); // Default = AR_MATRIX_CODE_3x3
+
 
     //      Marker frame                Obj Frame
     //         y
@@ -168,7 +159,7 @@ void ARTracker::ARInit(){
     marker2obj.setBasis(rot);
     std::string path="/home/tman/ros_ws/image_samples";
     _sample_extr = SampleExtractor(cv::Size(160,32),cv::Size2d(0.9,0.14),cv::Size2d(10,10),path,marker2obj,_cam_info);
-
+    _sample_extr.initDetection("/home/tman/ros_ws/image_samples/hog_cv.dat");
 
 }
 
@@ -542,7 +533,9 @@ void ARTracker::mainLoop(void)
 
                     //extractSample(tf);
                     _sample_extr.update(tf,_capture_left->image,true,false);
-                    _sample_extr.extractPositivePatch("pos");
+                    _sample_extr.extractFalsePositives("test");
+                    //_sample_extr.extractPositivePatch("pos");
+                    //_sample_extr.extractNegativePatch("neg");
                     ///compute new scale
                     //get vertex and compute average length of pixel of the marker in the image
                     double x=_ar_markers_square[i].marker_height/1000.0;

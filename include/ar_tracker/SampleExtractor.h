@@ -11,7 +11,7 @@
 #include <string>
 #include <image_geometry/pinhole_camera_model.h>
 #include <boost/filesystem.hpp>
-
+#include <opencv2/objdetect/objdetect.hpp>
 
 namespace fs = ::boost::filesystem;
 
@@ -25,12 +25,15 @@ public:
 
     void extractPositivePatch(std::string path,std::string file_type=".jpg", bool overwrite =false);
     void extractNegativePatch(std::string path,std::string file_type=".jpg", bool overwrite =false);
+    bool initDetection(std::string path_hog);
+    void extractFalsePositives(std::string path,std::string file_type=".jpg", bool overwrite =false);
 
 
 private:
     long _cnt_pos;
     long _cnt_neg;
     bool _init=false;
+    bool _init_detection=false;
     tf::Transform _marker2obj;
     tf::Transform _cam2marker;
     cv::Size _rect_size;
@@ -38,6 +41,7 @@ private:
     cv::Size2d _obj_size;
     cv::Mat _img;
     cv::Rect _bb_scaled;
+    cv::HOGDescriptor _hog;
     image_geometry::PinholeCameraModel _cam_model;
     std::string _path_root;
     bool openDir(std::string path, std::vector<fs::path> & file_list, std::string file_format);

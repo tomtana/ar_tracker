@@ -367,4 +367,59 @@ void SampleExtractor::extractNegativePatch(std::string path, std::string file_ty
     _cnt_neg++;
 }
 
+bool SampleExtractor::initDetection(std::string path_hog) {
+    if(!fs::exists(path_hog) || !fs::is_regular_file(path_hog)) {
+        ROS_ERROR("Path to HogDescriptor file is wrong: %s", path_hog.c_str());
+        return false;
+    }
+    if(!_hog.load(path_hog)){
+        ROS_ERROR("Could not load HogDescriptor: %s", path_hog.c_str());
+        return false;
+    }
+    ROS_INFO("HogDescriptor initialized..");
+    _init_detection=true;
+    return true;
+
+}
+
+void SampleExtractor::extractFalsePositives(std::string path, std::string file_type, bool overwrite) {
+
+    if(!_init){
+        ROS_DEBUG("Not initialized!");
+        return;
+    }
+    if(!_init_detection){
+        ROS_DEBUG("Detection not initialized!");
+        return;
+    }
+
+    std::vector<cv::Point> locations;
+    std::vector<double> weights;
+    if(_img.type()!=CV_8UC1){
+        ROS_ERROR("Image has to be of type CV_8UC1");
+        return;
+    }
+    double min,max;
+    cv::minMaxLoc(_img,&min,&max);
+    if(max<=1){
+        ROS_ERROR("Image has wrong scale max= %f",max);
+    }
+    _hog.detect(_img,locations,weights,-10);
+    //if sth was detected, draw the image with the detection and order the
+    if(!locations.empty()){
+        //std::sort(weights.begin(),weights.end());
+        long idx=std::distance(weights.begin(),std::min_element(weights.begin(),weights.end()));
+        for(auto i :weights){
+            ROS_INFO("%f",i);
+        }
+
+        cv::Rect bb=_bb_scaled;
+        bb.x =locations[idx].x;
+        bb.y =locations[idx].y;
+        cv::rectangle(_img,bb,cv::Scalar(0,0,0),5);
+        cv::imshow("Detection", _img);
+    }
+
+
+}
 
