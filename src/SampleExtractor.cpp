@@ -27,6 +27,7 @@ SampleExtractor::SampleExtractor(cv::Size rect_size,cv::Size2d obj_size, cv::Siz
     _boarder_size_percent=boarder_size_percent;
     _cnt_neg=0;
     _cnt_pos=0;
+    _cnt_false_positive=0;
     _obj_size=obj_size;
 }
 
@@ -84,7 +85,7 @@ bool SampleExtractor::openDir(std::string path, std::vector<fs::path> & file_lis
 
     while(it != endit)
     {
-        if(fs::is_regular_file(*it) && it->path().extension() == ".jpg") ret.push_back(it->path().filename());
+        if(fs::is_regular_file(*it) && it->path().extension() == ".jpg" ) ret.push_back(it->path().filename());
         ++it;
 
     }
@@ -176,7 +177,12 @@ bool SampleExtractor::getBoundingRect(cv::Rect &bb) {
     cv::Rect rect_full=cv::Rect(cv::Point(), _cam_model.fullResolution());
 
     //if object not in image return
-    if(!(rect_full.contains(obj_rect.br()) && rect_full.contains(obj_rect.tl()) )){
+    if(
+        !(rect_full.contains(obj_rect.br())
+         && rect_full.contains(obj_rect.tl())
+         &&rect_full.contains(obj_rect.tl()+cv::Point(0,obj_rect.height) )
+         &&rect_full.contains(obj_rect.br()-cv::Point(0,obj_rect.height) )  )
+            ){
         ROS_ERROR("Object lies outside image");
         return false;
     }
@@ -318,25 +324,34 @@ void SampleExtractor::extractNegativePatch(std::string path, std::string file_ty
 
     if(!isOpen){
 
-        ROS_INFO("Path: %s",path.c_str());
+        ROS_INFO("extractNegativePatch: Path: %s",path.c_str());
         std::vector<fs::path> file_list;
         if(!openDir(_path_root+path,file_list,file_type)){
-            ROS_ERROR("Dir not valid!");
+            ROS_ERROR("extractNegativePatch: Dir not valid!");
             exit(1);
         }
         if(!file_list.empty()&& !overwrite){
             std::string last =file_list.back().string();
-            std::regex r("[1-9][[:digit:]]+");
-            std::smatch match;
-            //check if number was matched and set the cnt variable accoringly
-            if(std::regex_search(last,match,r)){
-                _cnt_pos=std::stoi(match.str())+1;
-                ROS_INFO("Highest number of image name: %s",match.str().c_str());
-                ROS_INFO("Starting naming at: %u", _cnt_pos);
+            std::regex r("(^0*)(?!^[A-Z])(?!$)([0-9]*)");
 
+            //check if number was matched and set the cnt variable accoringly
+            for(auto s=file_list.rbegin();s!=file_list.rend();++s){
+                std::smatch match;
+                if(std::regex_search(s->string(),match,r)){
+
+                    if(!match.str(2).empty()){
+                        ROS_INFO("extractNegativePatch: Highest number of image name: %s",match.str(2).c_str());
+                        _cnt_neg=std::stoi(match.str(2))+1;
+                    }
+
+                    break;
+
+                }
             }
+            ROS_INFO("extractNegativePatch: Starting naming at: FD%.7u%s", _cnt_neg,file_type.c_str());
 
         }
+
 
 
         isOpen=true;
@@ -384,6 +399,8 @@ bool SampleExtractor::initDetection(std::string path_hog) {
 
 void SampleExtractor::extractFalsePositives(std::string path, std::string file_type, bool overwrite) {
 
+    static bool isOpen=false;
+
     if(!_init){
         ROS_DEBUG("Not initialized!");
         return;
@@ -393,33 +410,132 @@ void SampleExtractor::extractFalsePositives(std::string path, std::string file_t
         return;
     }
 
+    if(path.at(0)=='/'){
+        path.erase(0,1);
+    };
+    if(path.back()!='/'){
+        path.append("/");
+    };
+
+    if(!isOpen){
+
+        ROS_INFO("extractFalsePositives: Path: %s",path.c_str());
+        std::vector<fs::path> file_list;
+        if(!openDir(_path_root+path,file_list,file_type)){
+            ROS_ERROR("extractFalsePositives: Dir not valid!");
+            exit(1);
+        }
+        if(!file_list.empty()&& !overwrite){
+            std::string last =file_list.back().string();
+            std::regex r("(^[A-Za-z]*)(0*)(?!$)([0-9]*)");
+
+            //check if number was matched and set the cnt variable accoringly
+            for(auto s=file_list.rbegin();s!=file_list.rend();++s){
+                std::smatch match;
+                if(std::regex_search(s->string(),match,r)){
+
+                    if(!match.str(3).empty()){
+                        ROS_INFO("extractFalsePositives: Highest number of image name: %s",match.str(3).c_str());
+                        _cnt_false_positive=std::stoi(match.str(3))+1;
+                    }else{
+                        ROS_INFO("extractFalsePositives: Highest number of image name: 0");
+                        _cnt_false_positive=1;
+                    }
+
+
+                    break;
+
+                }
+            }
+            ROS_INFO("extractFalsePositives: Starting naming at: FD%.7u%s", _cnt_false_positive,file_type.c_str());
+
+        }
+
+
+
+        isOpen=true;
+    }
+
     std::vector<cv::Point> locations;
     std::vector<double> weights;
     if(_img.type()!=CV_8UC1){
-        ROS_ERROR("Image has to be of type CV_8UC1");
+        ROS_ERROR("extractFalsePositives: Image has to be of type CV_8UC1");
         return;
     }
-    double min,max;
-    cv::minMaxLoc(_img,&min,&max);
-    if(max<=1){
-        ROS_ERROR("Image has wrong scale max= %f",max);
-    }
+    cv::Mat img;
+    cv::cvtColor(_img,img,CV_GRAY2RGB);
+    ros::Time start=ros::Time::now();
     _hog.detect(_img,locations,weights,-10);
     //if sth was detected, draw the image with the detection and order the
     if(!locations.empty()){
+        //check if detected regions overlap with the ground truth
         //std::sort(weights.begin(),weights.end());
-        long idx=std::distance(weights.begin(),std::min_element(weights.begin(),weights.end()));
-        for(auto i :weights){
-            ROS_INFO("%f",i);
+
+        //get all positive matches
+        std::vector<long> ml;
+        for(auto i=weights.begin();i!=weights.end();++i){
+            if(*i<0){
+                ml.push_back(std::distance(weights.begin(),i));
+            }
         }
 
+        //check if they overlap with the ground truth
+        std::vector<cv::Rect> tp_rect;
+        std::vector<cv::Rect> fp_rect;
+        for(auto i:ml){
+            cv::Point bl,ul,br,ur;
+            ul=cv::Point(locations[i]);
+            bl=cv::Point(locations[i])+cv::Point(0,_bb_scaled.height);
+            br=cv::Point(locations[i])+cv::Point(_bb_scaled.width,_bb_scaled.height);
+            ur=cv::Point(locations[i])+cv::Point(_bb_scaled.width,0);
+            if(!_bb_scaled.contains(ul)&&!_bb_scaled.contains(bl)&&!_bb_scaled.contains(br)&&!_bb_scaled.contains(ur)){
+                fp_rect.push_back(cv::Rect(ul,br));
+            }else{
+                tp_rect.push_back(cv::Rect(ul,br));
+            }
+        }
+
+        ///draw results
+
+
+
+        //draw false positives
+        for(auto i: fp_rect){
+            cv::rectangle(img,i,cv::Scalar(0,0,255),1);
+        }
+        //draw overlapping true positives
+        for(auto i: tp_rect){
+            cv::rectangle(img,i,cv::Scalar(0, 0, 0),1);
+        }
+        //draw ground truth
+        cv::rectangle(img,_bb_scaled,cv::Scalar(160, 229, 158),4);
+        long idx=std::distance(weights.begin(),std::min_element(weights.begin(),weights.end()));
+        ROS_INFO("extractFalsePositives: Detection weight: %f at position[%i ,%i]  in %fsec",weights[idx],locations[idx].x,(locations[idx].y,ros::Time::now()-start).toSec());
         cv::Rect bb=_bb_scaled;
         bb.x =locations[idx].x;
         bb.y =locations[idx].y;
-        cv::rectangle(_img,bb,cv::Scalar(0,0,0),5);
-        cv::imshow("Detection", _img);
-    }
+        cv::Scalar color(0,0,255);
+        if(std::find(fp_rect.begin(),fp_rect.end(),bb)==fp_rect.end()){
+            color=cv::Scalar(0,255,0);
+        }
+        cv::rectangle(img,bb,color,4);
+        cv::putText(img,"Best match: "+std::to_string(weights[idx]),cv::Point(bb.x+(int)(bb.width*0.05),bb.y+(int)(bb.height*0.5)),CV_FONT_HERSHEY_PLAIN,0.5,color);
 
+        cv::imshow("Detection", img);
+
+        //save image patches
+        for(auto i:fp_rect){
+            cv::Mat out=_img(i);
+            char img_name_c[12];
+            std::sprintf(img_name_c,"FP%.7u",_cnt_false_positive);
+            cv::imshow("False Positive", out);
+            cv::imwrite(_path_root+path+img_name_c+file_type,out);
+            _cnt_false_positive++;
+        }
+
+
+
+    }
 
 }
 

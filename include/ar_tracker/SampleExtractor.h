@@ -32,6 +32,7 @@ public:
 private:
     long _cnt_pos;
     long _cnt_neg;
+    long _cnt_false_positive;
     bool _init=false;
     bool _init_detection=false;
     tf::Transform _marker2obj;

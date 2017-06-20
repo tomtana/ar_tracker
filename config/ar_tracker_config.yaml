@@ -77,7 +77,7 @@ ar_thresh: 100
 # track once it is found. This value corresponds to the id in the
 # marker config file. [0,..,n-1]
 #
-marker_to_track: 2
+marker_to_track: 0
 ##
 # default scale: here you can specify a scaling factor of the image. 
 # It is applied to the input. The value has to be 0<value<=1.
@@ -99,13 +99,13 @@ scale_wait_reset: 50
 # interation the specified marker was not found.
 # The resulting roi has the width=2*value +old_width.
 ##
-roi_region_grow_x: 50
+roi_region_grow_x: 100
 ##
 # The size a region of intereset will grow in height at each 
 # interation the specified marker was not found.
 # The resulting roi has the height=2*value +old_height.
 ##
-roi_region_grow_y: 25
+roi_region_grow_y: 50
 ##
 #	This parameter specifies that the roi is only every 
 # nth iteration enlagred if the marker was not found.
@@ -114,11 +114,11 @@ roi_wait_reset: 0
 ##
 # Standart roi height
 ##
-roi_height: 25
+roi_height: 80
 ##
 # Standart roi width
 ##
-roi_width: 25
+roi_width: 80
 ##
 # Predict roi by using gradient
 #
